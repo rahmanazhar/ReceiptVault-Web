@@ -13,6 +13,7 @@ use App\Infrastructure\Repositories\{
     TransactionRepository
 };
 use App\Domain\Services\{
+    AbacusAiService,
     AuthService,
     CategoryService,
     ReceiptService,
@@ -33,6 +34,7 @@ class RepositoryServiceProvider extends ServiceProvider
         $this->app->bind(TransactionRepositoryInterface::class, TransactionRepository::class);
 
         // Register services as singletons
+        $this->app->singleton(AbacusAiService::class);
         $this->app->singleton(AuthService::class);
         $this->app->singleton(CategoryService::class);
         $this->app->singleton(ReceiptService::class);

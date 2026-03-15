@@ -5,6 +5,7 @@ namespace App\Domain\Services;
 use App\Domain\Models\Receipt;
 use App\Domain\Repositories\Interfaces\ReceiptRepositoryInterface;
 use App\Domain\Repositories\Interfaces\TransactionRepositoryInterface;
+use App\Jobs\ProcessReceiptWithAi;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -22,7 +23,7 @@ class ReceiptService
         $this->transactionRepository = $transactionRepository;
     }
 
-    public function uploadReceipt(int $userId, UploadedFile $file): Receipt
+    public function uploadReceipt(int $userId, UploadedFile $file, array $metadata = []): Receipt
     {
         // Store the receipt image
         $path = $this->storeReceiptImage($file);
@@ -31,14 +32,17 @@ class ReceiptService
         $receipt = $this->receiptRepository->create([
             'user_id' => $userId,
             'image_path' => $path,
+            'original_filename' => $file->getClientOriginalName(),
+            'file_size' => $file->getSize(),
+            'mime_type' => $file->getMimeType(),
+            'source' => $metadata['source'] ?? 'upload',
             'status' => 'pending',
             'purchase_date' => now(),
-            'total_amount' => 0, // Will be updated after OCR processing
+            'total_amount' => 0,
         ]);
 
-        // Dispatch OCR processing job
-        // TODO: Implement OCR job dispatch
-        // ProcessReceiptOcr::dispatch($receipt);
+        // Dispatch AI processing job
+        ProcessReceiptWithAi::dispatch($receipt->id);
 
         return $receipt;
     }

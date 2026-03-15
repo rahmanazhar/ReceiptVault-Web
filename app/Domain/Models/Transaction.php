@@ -17,18 +17,24 @@ class Transaction extends Model
         'category_id',
         'description',
         'amount',
+        'currency',
         'transaction_date',
         'is_tax_deductible',
         'tax_category',
+        'lhdn_category_code',
+        'tax_relief_amount',
+        'tax_year',
         'notes',
-        'metadata'
+        'metadata',
     ];
 
     protected $casts = [
         'amount' => 'decimal:2',
+        'tax_relief_amount' => 'decimal:2',
+        'tax_year' => 'integer',
         'transaction_date' => 'date',
         'is_tax_deductible' => 'boolean',
-        'metadata' => 'array'
+        'metadata' => 'array',
     ];
 
     public function user(): BelongsTo
@@ -44,5 +50,11 @@ class Transaction extends Model
     public function category(): BelongsTo
     {
         return $this->belongsTo(Category::class);
+    }
+
+    public function lhdnTaxRelief(): \Illuminate\Database\Eloquent\Relations\HasOne
+    {
+        return $this->hasOne(LhdnTaxRelief::class, 'code', 'lhdn_category_code')
+            ->where('tax_year', $this->tax_year ?? date('Y'));
     }
 }

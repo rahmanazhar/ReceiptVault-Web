@@ -12,7 +12,7 @@ return [
     |
     */
 
-    'name' => env('APP_NAME', 'Laravel'),
+    'name' => env('APP_NAME', 'Receipting Online'),
 
     /*
     |--------------------------------------------------------------------------
@@ -64,7 +64,7 @@ return [
     |
     */
 
-    'timezone' => 'UTC',
+    'timezone' => env('APP_TIMEZONE', 'Asia/Kuala_Lumpur'),
 
     /*
     |--------------------------------------------------------------------------
@@ -186,7 +186,5 @@ return [
     |
     */
 
-    'aliases' => [
-        // ...
-    ],
+    'aliases' => Illuminate\Support\Facades\Facade::defaultAliases()->toArray(),
 ];

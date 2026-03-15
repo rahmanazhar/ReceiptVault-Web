@@ -16,6 +16,10 @@ class User extends Authenticatable implements JWTSubject
         'name',
         'email',
         'password',
+        'phone',
+        'tax_identification_number',
+        'default_currency',
+        'preferences',
     ];
 
     protected $hidden = [
@@ -26,6 +30,7 @@ class User extends Authenticatable implements JWTSubject
     protected $casts = [
         'email_verified_at' => 'datetime',
         'password' => 'hashed',
+        'preferences' => 'array',
     ];
 
     public function getJWTIdentifier()

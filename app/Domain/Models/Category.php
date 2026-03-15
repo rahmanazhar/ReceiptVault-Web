@@ -17,11 +17,17 @@ class Category extends Model
         'name',
         'description',
         'color',
-        'is_system'
+        'icon',
+        'sort_order',
+        'is_system',
+        'lhdn_category_code',
+        'tax_relief_limit',
     ];
 
     protected $casts = [
-        'is_system' => 'boolean'
+        'is_system' => 'boolean',
+        'tax_relief_limit' => 'decimal:2',
+        'sort_order' => 'integer',
     ];
 
     public function user(): BelongsTo
