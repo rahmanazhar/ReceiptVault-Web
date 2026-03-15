@@ -149,12 +149,26 @@ class ReceiptWebController extends Controller
             return back()->with('error', 'Unsupported image format for rotation.');
         }
 
+        // For PNG, preserve transparency
+        if ($mime === 'image/png') {
+            imagealphablending($image, false);
+            imagesavealpha($image, true);
+            $bgColor = imagecolorallocatealpha($image, 255, 255, 255, 0);
+        } else {
+            $bgColor = imagecolorallocate($image, 255, 255, 255);
+        }
+
         // GD rotates counter-clockwise, so negate for clockwise
-        $rotated = imagerotate($image, -$degrees, 0);
+        $rotated = imagerotate($image, -$degrees, $bgColor);
         imagedestroy($image);
 
         if (!$rotated) {
             return back()->with('error', 'Rotation failed.');
+        }
+
+        if ($mime === 'image/png') {
+            imagealphablending($rotated, false);
+            imagesavealpha($rotated, true);
         }
 
         match ($mime) {

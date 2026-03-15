@@ -1,6 +1,5 @@
 import { useState, useRef } from 'react';
 import { router } from '@inertiajs/react';
-import Button from '@/Components/ui/Button';
 import { downloadFromUrl } from '@/lib/imageProcessing';
 import {
     ArrowUturnLeftIcon,
@@ -11,6 +10,8 @@ import {
     ArrowsPointingOutIcon,
 } from '@heroicons/react/24/outline';
 
+type EnhanceMode = 'original' | 'enhanced' | 'scan';
+
 interface Props {
     imageUrl: string | null;
     receiptId: number;
@@ -18,36 +19,35 @@ interface Props {
 }
 
 export default function ImageViewer({ imageUrl, receiptId, merchantName }: Props) {
-    const [rotation, setRotation] = useState(0);
     const [zoom, setZoom] = useState(1);
     const [rotating, setRotating] = useState(false);
+    const [enhance, setEnhance] = useState<EnhanceMode>('original');
     const containerRef = useRef<HTMLDivElement>(null);
 
     const handleRotate = (degrees: number) => {
-        // Persist rotation on server - server rotates the actual image file
         setRotating(true);
         router.post(`/receipts/${receiptId}/rotate`, { degrees }, {
             preserveScroll: true,
-            onSuccess: () => {
-                // Server rotated the image, reset CSS rotation
-                setRotation(0);
-                setRotating(false);
-            },
-            onError: () => {
-                setRotating(false);
-            },
+            onSuccess: () => setRotating(false),
+            onError: () => setRotating(false),
         });
     };
 
     const handleZoomIn = () => setZoom(Math.min(zoom + 0.25, 3));
     const handleZoomOut = () => setZoom(Math.max(zoom - 0.25, 0.5));
-    const handleZoomReset = () => { setZoom(1); setRotation(0); };
+    const handleZoomReset = () => setZoom(1);
 
     const handleDownload = () => {
         if (!imageUrl) return;
-        const filename = `receipt-${merchantName?.replace(/\s+/g, '_') || receiptId}.jpg`;
-        downloadFromUrl(imageUrl, filename);
+        downloadFromUrl(imageUrl, `receipt-${merchantName?.replace(/\s+/g, '_') || receiptId}.jpg`);
     };
+
+    // CSS filters for enhancement modes
+    const filterStyle = enhance === 'enhanced'
+        ? 'grayscale(100%) contrast(1.4) brightness(1.1)'
+        : enhance === 'scan'
+            ? 'grayscale(100%) contrast(2.5) brightness(1.3)'
+            : 'none';
 
     if (!imageUrl) {
         return (
@@ -59,7 +59,7 @@ export default function ImageViewer({ imageUrl, receiptId, merchantName }: Props
 
     return (
         <div className="space-y-3">
-            {/* Toolbar */}
+            {/* Toolbar row 1: rotate, zoom, download */}
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-1">
                     <ToolButton
@@ -87,7 +87,7 @@ export default function ImageViewer({ imageUrl, receiptId, merchantName }: Props
                     />
                     <ToolButton
                         icon={<ArrowsPointingOutIcon className="h-4 w-4" />}
-                        label="Reset"
+                        label="Reset zoom"
                         onClick={handleZoomReset}
                     />
                 </div>
@@ -100,7 +100,24 @@ export default function ImageViewer({ imageUrl, receiptId, merchantName }: Props
                 />
             </div>
 
-            {/* Image container - swaps aspect when rotated 90/270 */}
+            {/* Toolbar row 2: enhancement modes */}
+            <div className="flex items-center gap-2">
+                {(['original', 'enhanced', 'scan'] as const).map((mode) => (
+                    <button
+                        key={mode}
+                        onClick={() => setEnhance(mode)}
+                        className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors ${
+                            enhance === mode
+                                ? 'bg-[var(--color-accent)] text-[var(--color-text-inverse)]'
+                                : 'bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]'
+                        }`}
+                    >
+                        {mode === 'original' ? 'Original' : mode === 'enhanced' ? 'Enhanced' : 'Scan'}
+                    </button>
+                ))}
+            </div>
+
+            {/* Image */}
             <div
                 ref={containerRef}
                 className="relative rounded-lg bg-[var(--color-bg-tertiary)] overflow-hidden"
@@ -108,18 +125,14 @@ export default function ImageViewer({ imageUrl, receiptId, merchantName }: Props
                 <img
                     src={imageUrl}
                     alt="Receipt"
-                    className="w-full h-auto object-contain select-none transition-transform duration-300"
+                    className="w-full h-auto object-contain select-none transition-all duration-300"
                     style={{
-                        transform: `rotate(${rotation}deg) scale(${zoom})`,
-                        // When rotated 90/270, scale down to fit the swapped dimensions
-                        ...(rotation % 180 !== 0 ? {
-                            maxHeight: '100%',
-                        } : {}),
+                        transform: `scale(${zoom})`,
+                        filter: filterStyle,
                     }}
                     draggable={false}
                 />
 
-                {/* Zoom indicator */}
                 {zoom !== 1 && (
                     <div className="absolute bottom-2 left-2 bg-black/60 text-white text-xs px-2 py-1 rounded">
                         {Math.round(zoom * 100)}%
