@@ -36,8 +36,7 @@ export default function ReceiptShow({ receipt, categories, lhdnCategories }: Pro
     };
 
     const handleConfirm = () => {
-        setData('status', 'completed');
-        put(`/receipts/${receipt.id}`);
+        router.put(`/receipts/${receipt.id}`, { ...data, status: 'completed' });
     };
 
     const confidenceScore = receipt.ai_confidence_score ? parseFloat(receipt.ai_confidence_score) : null;
