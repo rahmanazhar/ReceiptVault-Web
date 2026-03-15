@@ -4,6 +4,7 @@ import { useDropzone } from 'react-dropzone';
 import { Card } from '@/Components/ui/Card';
 import Button from '@/Components/ui/Button';
 import CameraCapture from './CameraCapture';
+import CornerEditor from './CornerEditor';
 import {
     CloudArrowUpIcon,
     CameraIcon,
@@ -12,16 +13,24 @@ import {
 import { cn } from '@/lib/utils';
 
 type Tab = 'upload' | 'camera' | 'scan';
-type Stage = 'select' | 'uploading';
+type Stage = 'select' | 'crop' | 'uploading';
 
 export default function ReceiptUploader() {
     const [activeTab, setActiveTab] = useState<Tab>('upload');
     const [stage, setStage] = useState<Stage>('select');
+    const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
     const onDrop = useCallback((acceptedFiles: File[]) => {
         const f = acceptedFiles[0];
         if (f) {
-            uploadFile(f, 'upload');
+            if (f.type === 'application/pdf') {
+                // PDFs go straight to upload
+                uploadFile(f, 'upload');
+            } else {
+                // Images go to corner editor for cropping
+                setSelectedFile(f);
+                setStage('crop');
+            }
         }
     }, []);
 
@@ -37,26 +46,32 @@ export default function ReceiptUploader() {
     });
 
     const handleCameraCapture = (blob: Blob) => {
-        // jscanify already extracted the paper in CameraCapture - upload directly
         const source = activeTab === 'camera' ? 'camera' : 'scan';
         uploadFile(blob, source);
     };
 
+    const handleCropConfirm = (blob: Blob) => {
+        uploadFile(blob, 'upload');
+    };
+
+    const handleSkipCrop = () => {
+        if (selectedFile) uploadFile(selectedFile, 'upload');
+    };
+
     const uploadFile = (file: File | Blob, source: string) => {
         setStage('uploading');
-
         const formData = new FormData();
-        formData.append('image', file, file instanceof File ? file.name : `receipt-${Date.now()}.jpg`);
+        formData.append('image', file, file instanceof File ? file.name : `receipt-${Date.now()}.png`);
         formData.append('source', source);
-
         router.post('/receipts', formData, {
             forceFormData: true,
-            onFinish: () => setStage('select'),
+            onFinish: () => { setStage('select'); setSelectedFile(null); },
         });
     };
 
     const clearSelection = () => {
         setStage('select');
+        setSelectedFile(null);
     };
 
     const tabs: { key: Tab; label: string; icon: React.ReactNode }[] = [
@@ -86,6 +101,15 @@ export default function ReceiptUploader() {
                 ))}
             </div>
 
+            {/* Stage: Crop - adjust corners before upload */}
+            {stage === 'crop' && selectedFile && (
+                <CornerEditor
+                    file={selectedFile}
+                    onConfirm={handleCropConfirm}
+                    onCancel={handleSkipCrop}
+                />
+            )}
+
             {/* Stage: Uploading */}
             {stage === 'uploading' && (
                 <div className="flex items-center justify-center h-64">
@@ -103,7 +127,6 @@ export default function ReceiptUploader() {
             {/* Stage: Selection */}
             {stage === 'select' && (
                 <>
-                    {/* Upload tab */}
                     {activeTab === 'upload' && (
                         <div
                             {...getRootProps()}
@@ -120,12 +143,11 @@ export default function ReceiptUploader() {
                                 {isDragActive ? 'Drop your receipt here' : 'Drag & drop your receipt, or click to browse'}
                             </p>
                             <p className="mt-1 text-xs text-[var(--color-text-muted)]">
-                                Supports JPEG, PNG, PDF (max 10MB). Images are auto-enhanced.
+                                Supports JPEG, PNG, PDF (max 10MB)
                             </p>
                         </div>
                     )}
 
-                    {/* Camera / Scan tab */}
                     {(activeTab === 'camera' || activeTab === 'scan') && (
                         <CameraCapture
                             onCapture={handleCameraCapture}
