@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Domain\Models\MedicalCertificate;
 use App\Domain\Services\MedicalCertificateService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 
@@ -45,6 +46,51 @@ class MedicalCertificateWebController extends Controller
         return Inertia::render('MedicalCertificates/Index', [
             'medicalCertificates' => $medicalCertificates,
             'filters' => $request->only(['search', 'status', 'date_from', 'date_to']),
+        ]);
+    }
+
+    public function summary(Request $request)
+    {
+        $userId = $request->user()->id;
+
+        // Yearly aggregation
+        $yearly = MedicalCertificate::where('user_id', $userId)
+            ->whereNotNull('mc_start_date')
+            ->select(
+                DB::raw('YEAR(mc_start_date) as year'),
+                DB::raw('COUNT(*) as total_mcs'),
+                DB::raw('COALESCE(SUM(mc_days), 0) as total_days'),
+            )
+            ->groupBy(DB::raw('YEAR(mc_start_date)'))
+            ->orderByDesc('year')
+            ->get();
+
+        // Monthly breakdown per year
+        $monthly = MedicalCertificate::where('user_id', $userId)
+            ->whereNotNull('mc_start_date')
+            ->select(
+                DB::raw('YEAR(mc_start_date) as year'),
+                DB::raw('MONTH(mc_start_date) as month'),
+                DB::raw('COUNT(*) as total_mcs'),
+                DB::raw('COALESCE(SUM(mc_days), 0) as total_days'),
+            )
+            ->groupBy(DB::raw('YEAR(mc_start_date)'), DB::raw('MONTH(mc_start_date)'))
+            ->orderByDesc('year')
+            ->orderBy('month')
+            ->get()
+            ->groupBy('year');
+
+        // Recent MCs for context
+        $recentMcs = MedicalCertificate::where('user_id', $userId)
+            ->whereNotNull('mc_start_date')
+            ->orderByDesc('mc_start_date')
+            ->limit(10)
+            ->get();
+
+        return Inertia::render('MedicalCertificates/Summary', [
+            'yearly' => $yearly,
+            'monthly' => $monthly,
+            'recentMcs' => $recentMcs,
         ]);
     }
 

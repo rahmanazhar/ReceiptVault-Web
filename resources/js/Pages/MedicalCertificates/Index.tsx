@@ -21,6 +21,7 @@ import {
     ArrowDownTrayIcon,
     ArrowPathIcon,
     TrashIcon,
+    ChartBarIcon,
 } from '@heroicons/react/24/outline';
 import type { MedicalCertificate, PaginatedResponse } from '@/types/models';
 
@@ -116,6 +117,17 @@ export default function MedicalCertificatesIndex({ medicalCertificates, filters 
                 <TopBar title="Medical Certificates" subtitle={`${medicalCertificates.total} total`} action={{ label: 'Upload MC', href: '/medical-certificates/create' }} />
 
                 <div className="p-4 sm:p-6 space-y-4">
+                    {/* Quick actions */}
+                    <div className="flex justify-end">
+                        <Link
+                            href="/medical-certificates/summary"
+                            className="inline-flex items-center gap-1.5 text-sm text-[var(--color-text-muted)] hover:text-[var(--color-accent)] transition-colors"
+                        >
+                            <ChartBarIcon className="h-4 w-4" />
+                            Leave Summary
+                        </Link>
+                    </div>
+
                     {/* Search & Filter Bar */}
                     <Card>
                         <div className="space-y-3">

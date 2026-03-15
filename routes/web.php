@@ -49,6 +49,7 @@ Route::middleware('auth')->group(function () {
 
     // Medical Certificates
     Route::get('/medical-certificates', [MedicalCertificateWebController::class, 'index'])->name('medical-certificates.index');
+    Route::get('/medical-certificates/summary', [MedicalCertificateWebController::class, 'summary'])->name('medical-certificates.summary');
     Route::get('/medical-certificates/create', [MedicalCertificateWebController::class, 'create'])->name('medical-certificates.create');
     Route::post('/medical-certificates', [MedicalCertificateWebController::class, 'store'])->name('medical-certificates.store');
     Route::get('/medical-certificates/{medical_certificate}', [MedicalCertificateWebController::class, 'show'])->name('medical-certificates.show');
