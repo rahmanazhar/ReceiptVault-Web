@@ -2,6 +2,7 @@
 
 namespace App\Domain\Services;
 
+use App\Domain\DTOs\DocumentExtractionResult;
 use App\Domain\DTOs\MedicalCertificateExtractionResult;
 use App\Domain\DTOs\ReceiptExtractionResult;
 use Illuminate\Support\Facades\Http;
@@ -198,6 +199,136 @@ Rules:
 - mc_days should be an integer representing the total number of days of medical leave
 - If mc_days is not explicitly stated, calculate it from mc_start_date and mc_end_date (inclusive)
 - For doctor_reg_number, look for MMC number, registration number, or license number
+- If a field cannot be determined from the image, set it to null
+- Return ONLY the JSON object, no additional text
+PROMPT;
+    }
+
+    public function analyzeDocument(string $imagePath): DocumentExtractionResult
+    {
+        $imageContent = Storage::disk('public')->get($imagePath);
+        if (!$imageContent) {
+            throw new \RuntimeException("Document image not found: {$imagePath}");
+        }
+
+        $mimeType = Storage::disk('public')->mimeType($imagePath) ?: 'image/jpeg';
+
+        if ($mimeType === 'application/pdf') {
+            $imageContent = $this->convertPdfToImage($imageContent);
+            $mimeType = 'image/jpeg';
+        }
+
+        $base64Image = base64_encode($imageContent);
+
+        $response = $this->callDocumentChatCompletion($base64Image, $mimeType);
+
+        $parsed = $this->parseResponse($response);
+
+        return DocumentExtractionResult::fromAiResponse($parsed, $response);
+    }
+
+    private function callDocumentChatCompletion(string $base64Image, string $mimeType): array
+    {
+        if (empty($this->apiKey)) {
+            Log::warning('Abacus AI not configured - missing API key');
+            return [];
+        }
+
+        $attempt = 0;
+        $lastException = null;
+
+        while ($attempt < $this->maxRetries) {
+            try {
+                $response = Http::withHeaders([
+                    'Authorization' => 'Bearer ' . $this->apiKey,
+                    'Content-Type' => 'application/json',
+                ])
+                ->timeout($this->timeout)
+                ->post($this->baseUrl . '/chat/completions', [
+                    'model' => $this->model,
+                    'messages' => [
+                        [
+                            'role' => 'system',
+                            'content' => 'You are an expert document OCR specialist. Analyze document images and extract structured data. Always return valid JSON.',
+                        ],
+                        [
+                            'role' => 'user',
+                            'content' => [
+                                [
+                                    'type' => 'text',
+                                    'text' => $this->buildDocumentExtractionPrompt(),
+                                ],
+                                [
+                                    'type' => 'image_url',
+                                    'image_url' => [
+                                        'url' => "data:{$mimeType};base64,{$base64Image}",
+                                    ],
+                                ],
+                            ],
+                        ],
+                    ],
+                    'temperature' => 0.2,
+                    'max_tokens' => 2000,
+                    'stream' => false,
+                ]);
+
+                if ($response->successful()) {
+                    $json = $response->json() ?? [];
+                    Log::info('Abacus AI Document response received', [
+                        'status' => $response->status(),
+                        'model' => $json['model'] ?? 'unknown',
+                        'tokens' => $json['usage']['total_tokens'] ?? 0,
+                    ]);
+                    return $json;
+                }
+
+                Log::warning('Abacus AI Document response error', [
+                    'status' => $response->status(),
+                    'body' => substr($response->body(), 0, 500),
+                    'attempt' => $attempt + 1,
+                ]);
+
+            } catch (\Exception $e) {
+                $lastException = $e;
+                Log::warning("Abacus AI Document attempt " . ($attempt + 1) . " failed: {$e->getMessage()}");
+            }
+
+            $attempt++;
+            if ($attempt < $this->maxRetries) {
+                sleep(min(pow(2, $attempt), 8));
+            }
+        }
+
+        if ($lastException) {
+            throw $lastException;
+        }
+
+        return [];
+    }
+
+    private function buildDocumentExtractionPrompt(): string
+    {
+        return <<<PROMPT
+Analyze this document image and extract the following information. Return a valid JSON object with these fields:
+
+{
+    "document_type": "summons|business_card|contract|letter|invoice|warranty|certificate|other",
+    "title": "Document title, subject line, or heading",
+    "sender": "Person or organization who sent/issued this document",
+    "recipient": "Person or organization this document is addressed to",
+    "reference_number": "Any reference, serial, case, or ID number on the document",
+    "issue_date": "YYYY-MM-DD",
+    "expiry_date": "YYYY-MM-DD or null if not applicable",
+    "description": "Brief 1-2 sentence summary of the document content and purpose",
+    "additional_fields": {}
+}
+
+Rules:
+- For document_type, classify as one of: summons (court/traffic/legal summons), business_card, contract (agreements, MOUs), letter (official correspondence), invoice (bills, payment notices), warranty (product warranties, guarantees), certificate (any certificate or license), other (anything else)
+- Date format must be YYYY-MM-DD
+- For expiry_date, only set if the document has a clear expiration (e.g., warranty end date, certificate validity, license expiry). Otherwise set to null
+- For description, write a brief human-readable summary of what this document is about
+- For additional_fields, include any other noteworthy data visible on the document (e.g., amounts, phone numbers, addresses)
 - If a field cannot be determined from the image, set it to null
 - Return ONLY the JSON object, no additional text
 PROMPT;

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Web;
 use App\Http\Controllers\Controller;
 use App\Domain\Models\Transaction;
 use App\Domain\Models\Category;
+use App\Domain\Models\LhdnTaxRelief;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
@@ -28,7 +29,11 @@ class TransactionWebController extends Controller
         }
 
         if ($request->filled('tax_deductible')) {
-            $query->where('is_tax_deductible', true);
+            if ($request->tax_deductible === 'yes') {
+                $query->where('is_tax_deductible', true);
+            } elseif ($request->tax_deductible === 'no') {
+                $query->where('is_tax_deductible', false);
+            }
         }
 
         $transactions = $query->latest('transaction_date')->paginate(30);
@@ -38,9 +43,15 @@ class TransactionWebController extends Controller
               ->orWhere('is_system', true);
         })->orderBy('name')->get();
 
+        // LHDN category name lookup for displaying category names on transactions
+        $lhdnCategories = LhdnTaxRelief::where('tax_year', date('Y'))
+            ->where('is_active', true)
+            ->pluck('name', 'code');
+
         return Inertia::render('Transactions/Index', [
             'transactions' => $transactions,
             'categories' => $categories,
+            'lhdnCategories' => $lhdnCategories,
             'filters' => $request->only(['category_id', 'date_from', 'date_to', 'tax_deductible']),
         ]);
     }

@@ -6,6 +6,7 @@ import Badge from '@/Components/ui/Badge';
 import Select from '@/Components/ui/Select';
 import EmptyState from '@/Components/ui/EmptyState';
 import Tooltip from '@/Components/ui/Tooltip';
+import HelpTooltip from '@/Components/ui/HelpTooltip';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { BanknotesIcon, CalendarIcon } from '@heroicons/react/24/outline';
 import type { Transaction, Category, PaginatedResponse } from '@/types/models';
@@ -13,10 +14,11 @@ import type { Transaction, Category, PaginatedResponse } from '@/types/models';
 interface Props {
     transactions: PaginatedResponse<Transaction>;
     categories: Category[];
+    lhdnCategories: Record<string, string>;
     filters: Record<string, string>;
 }
 
-export default function TransactionsIndex({ transactions, categories, filters }: Props) {
+export default function TransactionsIndex({ transactions, categories, lhdnCategories, filters }: Props) {
     return (
         <>
             <Head title="Transactions" />
@@ -33,6 +35,17 @@ export default function TransactionsIndex({ transactions, categories, filters }:
                                     placeholder="All categories"
                                     value={filters.category_id || ''}
                                     onChange={(e) => router.get('/transactions', { ...filters, category_id: e.target.value || undefined }, { preserveState: true })}
+                                />
+                            </div>
+                            <div className="w-full sm:w-48">
+                                <Select
+                                    options={[
+                                        { value: 'yes', label: 'Tax Claimable' },
+                                        { value: 'no', label: 'Not Claimable' },
+                                    ]}
+                                    placeholder="All (tax status)"
+                                    value={filters.tax_deductible || ''}
+                                    onChange={(e) => router.get('/transactions', { ...filters, tax_deductible: e.target.value || undefined }, { preserveState: true })}
                                 />
                             </div>
                             <div className="flex flex-1 gap-3">
@@ -81,7 +94,12 @@ export default function TransactionsIndex({ transactions, categories, filters }:
                                             <th className="text-left text-xs font-medium text-[var(--color-text-muted)] uppercase px-4 py-3">Category</th>
                                             <th className="text-left text-xs font-medium text-[var(--color-text-muted)] uppercase px-4 py-3">Date</th>
                                             <th className="text-right text-xs font-medium text-[var(--color-text-muted)] uppercase px-4 py-3">Amount</th>
-                                            <th className="text-center text-xs font-medium text-[var(--color-text-muted)] uppercase px-4 py-3">Tax</th>
+                                            <th className="text-center text-xs font-medium text-[var(--color-text-muted)] uppercase px-4 py-3">
+                                                <div className="flex items-center justify-center gap-1">
+                                                    Tax
+                                                    <HelpTooltip text="Whether this transaction qualifies for LHDN tax relief" />
+                                                </div>
+                                            </th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -117,11 +135,7 @@ export default function TransactionsIndex({ transactions, categories, filters }:
                                                     {formatCurrency(tx.amount)}
                                                 </td>
                                                 <td className="px-4 py-3 text-center">
-                                                    {tx.is_tax_deductible && (
-                                                        <Tooltip content="This transaction qualifies for LHDN tax relief" position="left">
-                                                            <Badge variant="success">Claimable</Badge>
-                                                        </Tooltip>
-                                                    )}
+                                                    <TaxStatusCell tx={tx} lhdnCategories={lhdnCategories} />
                                                 </td>
                                             </tr>
                                         ))}
@@ -135,10 +149,10 @@ export default function TransactionsIndex({ transactions, categories, filters }:
                                     <Card key={tx.id} hover={!!tx.receipt_id}>
                                         {tx.receipt_id ? (
                                             <Link href={`/receipts/${tx.receipt_id}`} className="block">
-                                                <MobileTransactionCard tx={tx} />
+                                                <MobileTransactionCard tx={tx} lhdnCategories={lhdnCategories} />
                                             </Link>
                                         ) : (
-                                            <MobileTransactionCard tx={tx} />
+                                            <MobileTransactionCard tx={tx} lhdnCategories={lhdnCategories} />
                                         )}
                                     </Card>
                                 ))}
@@ -151,7 +165,28 @@ export default function TransactionsIndex({ transactions, categories, filters }:
     );
 }
 
-function MobileTransactionCard({ tx }: { tx: Transaction }) {
+function TaxStatusCell({ tx, lhdnCategories }: { tx: Transaction; lhdnCategories: Record<string, string> }) {
+    if (tx.is_tax_deductible) {
+        return (
+            <div className="flex flex-col items-center gap-1">
+                <Tooltip content="This transaction qualifies for LHDN tax relief" position="left">
+                    <Badge variant="success">Claimable</Badge>
+                </Tooltip>
+                {tx.lhdn_category_code && lhdnCategories[tx.lhdn_category_code] && (
+                    <span className="text-xs text-[var(--color-text-muted)] max-w-[120px] truncate">
+                        {lhdnCategories[tx.lhdn_category_code]}
+                    </span>
+                )}
+            </div>
+        );
+    }
+
+    return (
+        <Badge variant="default">Not Claimable</Badge>
+    );
+}
+
+function MobileTransactionCard({ tx, lhdnCategories }: { tx: Transaction; lhdnCategories: Record<string, string> }) {
     return (
         <div>
             <div className="flex items-start justify-between mb-2">
@@ -174,9 +209,20 @@ function MobileTransactionCard({ tx }: { tx: Transaction }) {
                         <span className="text-xs text-[var(--color-text-muted)]">Uncategorized</span>
                     )}
                 </div>
-                {tx.is_tax_deductible && (
-                    <Badge variant="success">Claimable</Badge>
-                )}
+                <div className="flex flex-col items-end gap-0.5">
+                    {tx.is_tax_deductible ? (
+                        <>
+                            <Badge variant="success">Claimable</Badge>
+                            {tx.lhdn_category_code && lhdnCategories[tx.lhdn_category_code] && (
+                                <span className="text-[10px] text-[var(--color-text-muted)] max-w-[100px] truncate">
+                                    {lhdnCategories[tx.lhdn_category_code]}
+                                </span>
+                            )}
+                        </>
+                    ) : (
+                        <Badge variant="default">Not Claimable</Badge>
+                    )}
+                </div>
             </div>
         </div>
     );

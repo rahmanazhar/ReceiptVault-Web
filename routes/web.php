@@ -5,6 +5,7 @@ use App\Http\Controllers\Web\Auth\LoginController;
 use App\Http\Controllers\Web\Auth\RegisterController;
 use App\Http\Controllers\Web\DashboardController;
 use App\Http\Controllers\Web\ReceiptWebController;
+use App\Http\Controllers\Web\DocumentWebController;
 use App\Http\Controllers\Web\MedicalCertificateWebController;
 use App\Http\Controllers\Web\TransactionWebController;
 use App\Http\Controllers\Web\TaxController;
@@ -57,6 +58,18 @@ Route::middleware('auth')->group(function () {
     Route::post('/medical-certificates/{medical_certificate}/recrop', [MedicalCertificateWebController::class, 'recrop'])->name('medical-certificates.recrop');
     Route::post('/medical-certificates/{medical_certificate}/retry-ai', [MedicalCertificateWebController::class, 'retryAi'])->name('medical-certificates.retryAi');
     Route::get('/medical-certificates/{medical_certificate}/download', [MedicalCertificateWebController::class, 'download'])->name('medical-certificates.download');
+
+    // Documents
+    Route::get('/documents', [DocumentWebController::class, 'index'])->name('documents.index');
+    Route::get('/documents/create', [DocumentWebController::class, 'create'])->name('documents.create');
+    Route::post('/documents', [DocumentWebController::class, 'store'])->name('documents.store');
+    Route::get('/documents/{document}', [DocumentWebController::class, 'show'])->name('documents.show');
+    Route::put('/documents/{document}', [DocumentWebController::class, 'update'])->name('documents.update');
+    Route::delete('/documents/{document}', [DocumentWebController::class, 'destroy'])->name('documents.destroy');
+    Route::post('/documents/{document}/rotate', [DocumentWebController::class, 'rotate'])->name('documents.rotate');
+    Route::post('/documents/{document}/recrop', [DocumentWebController::class, 'recrop'])->name('documents.recrop');
+    Route::post('/documents/{document}/retry-ai', [DocumentWebController::class, 'retryAi'])->name('documents.retryAi');
+    Route::get('/documents/{document}/download', [DocumentWebController::class, 'download'])->name('documents.download');
 
     // Transactions
     Route::get('/transactions', [TransactionWebController::class, 'index'])->name('transactions.index');

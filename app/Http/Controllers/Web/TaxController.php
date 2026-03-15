@@ -21,13 +21,22 @@ class TaxController extends Controller
             ->get();
 
         $reliefProgress = $lhdnCategories->map(function ($category) use ($userId, $year) {
+            // For parent categories, include sub-category claims in total
+            $allCodes = collect([$category->code]);
+            if (is_null($category->parent_code)) {
+                $childCodes = LhdnTaxRelief::where('parent_code', $category->code)
+                    ->where('tax_year', $year)
+                    ->pluck('code');
+                $allCodes = $allCodes->merge($childCodes);
+            }
+
             $claimed = Transaction::where('user_id', $userId)
-                ->where('lhdn_category_code', $category->code)
+                ->whereIn('lhdn_category_code', $allCodes)
                 ->where('tax_year', $year)
                 ->sum('tax_relief_amount');
 
             $receiptCount = Transaction::where('user_id', $userId)
-                ->where('lhdn_category_code', $category->code)
+                ->whereIn('lhdn_category_code', $allCodes)
                 ->where('tax_year', $year)
                 ->count();
 
@@ -42,15 +51,26 @@ class TaxController extends Controller
                     ? round(($claimed / $category->annual_limit) * 100, 1)
                     : 0,
                 'parent_code' => $category->parent_code,
+                'metadata' => $category->metadata,
             ];
         });
 
+        // Nest sub-categories under their parents
+        $parentItems = $reliefProgress->whereNull('parent_code')->values();
+        $childItems = $reliefProgress->whereNotNull('parent_code');
+
+        $nested = $parentItems->map(function ($parent) use ($childItems) {
+            $parent['children'] = $childItems->where('parent_code', $parent['code'])->values()->toArray();
+            return $parent;
+        })->values();
+
         $totalClaimed = $reliefProgress->sum('claimed_amount');
-        $totalLimit = $reliefProgress->whereNull('parent_code')->sum('annual_limit');
+        // Only sum parent limits (sub-limits are within parents, not additive)
+        $totalLimit = $parentItems->sum('annual_limit');
 
         return Inertia::render('Tax/Index', [
             'year' => (int) $year,
-            'reliefProgress' => $reliefProgress,
+            'reliefProgress' => $nested,
             'totalClaimed' => $totalClaimed,
             'totalLimit' => $totalLimit,
             'availableYears' => config('receipting.lhdn.supported_tax_years'),

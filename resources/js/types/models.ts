@@ -96,6 +96,15 @@ export interface Category {
     total_amount?: string;
 }
 
+export interface LhdnTaxReliefMetadata {
+    qualifying_items?: string[];
+    per_child?: boolean;
+    per_parent?: boolean;
+    deduction_type?: string;
+    tiers?: { max_property_value: number; limit: number }[];
+    [key: string]: unknown;
+}
+
 export interface LhdnTaxRelief {
     id: number;
     code: string;
@@ -105,9 +114,52 @@ export interface LhdnTaxRelief {
     tax_year: number;
     parent_code: string | null;
     is_active: boolean;
-    metadata: Record<string, unknown> | null;
+    metadata: LhdnTaxReliefMetadata | null;
     claimed_amount?: number;
     receipt_count?: number;
+}
+
+export type DocumentType = 'summons' | 'business_card' | 'contract' | 'letter' | 'invoice' | 'warranty' | 'certificate' | 'other';
+
+export const DOCUMENT_TYPE_LABELS: Record<DocumentType, string> = {
+    summons: 'Summons',
+    business_card: 'Business Card',
+    contract: 'Contract',
+    letter: 'Letter',
+    invoice: 'Invoice',
+    warranty: 'Warranty',
+    certificate: 'Certificate',
+    other: 'Other',
+};
+
+export interface Document {
+    id: number;
+    user_id: number;
+    image_path: string;
+    thumbnail_path: string | null;
+    original_filename: string | null;
+    file_size: number | null;
+    mime_type: string | null;
+    source: 'upload' | 'camera' | 'scan' | null;
+    document_type: DocumentType | null;
+    title: string | null;
+    sender: string | null;
+    recipient: string | null;
+    reference_number: string | null;
+    issue_date: string | null;
+    expiry_date: string | null;
+    description: string | null;
+    ocr_data: Record<string, unknown> | null;
+    ai_confidence_score: string | null;
+    ai_raw_response: Record<string, unknown> | null;
+    additional_fields: Record<string, string> | null;
+    metadata: Record<string, unknown> | null;
+    notes: string | null;
+    status: 'pending' | 'processing' | 'review_needed' | 'completed' | 'failed';
+    created_at: string;
+    updated_at: string;
+    image_url?: string;
+    thumbnail_url?: string;
 }
 
 export interface MedicalCertificate {
@@ -193,6 +245,8 @@ export interface TaxReliefProgress {
     receipt_count: number;
     percentage: number;
     parent_code?: string | null;
+    metadata?: LhdnTaxReliefMetadata | null;
+    children?: TaxReliefProgress[];
 }
 
 export type PaymentMethod = 'cash' | 'credit_card' | 'debit_card' | 'e_wallet' | 'online_banking' | 'bank_transfer';

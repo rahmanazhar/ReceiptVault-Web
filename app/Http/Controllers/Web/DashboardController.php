@@ -60,34 +60,48 @@ class DashboardController extends Controller
             ->limit(8)
             ->get();
 
-        // LHDN tax relief progress
+        // LHDN tax relief progress - show all top-level categories
         $lhdnCategories = LhdnTaxRelief::where('tax_year', $currentYear)
             ->where('is_active', true)
             ->whereNull('parent_code')
             ->get();
 
         $taxReliefProgress = $lhdnCategories->map(function ($category) use ($userId, $currentYear) {
+            // Include sub-category claims in parent total
+            $childCodes = LhdnTaxRelief::where('parent_code', $category->code)
+                ->where('tax_year', $currentYear)
+                ->pluck('code');
+
+            $allCodes = $childCodes->push($category->code);
+
             $claimed = Transaction::where('user_id', $userId)
-                ->where('lhdn_category_code', $category->code)
+                ->whereIn('lhdn_category_code', $allCodes)
                 ->where('tax_year', $currentYear)
                 ->sum('tax_relief_amount');
 
             $receiptCount = Transaction::where('user_id', $userId)
-                ->where('lhdn_category_code', $category->code)
+                ->whereIn('lhdn_category_code', $allCodes)
                 ->where('tax_year', $currentYear)
                 ->count();
 
             return [
                 'code' => $category->code,
                 'name' => $category->name,
+                'description' => $category->description,
                 'annual_limit' => (float) $category->annual_limit,
                 'claimed_amount' => (float) $claimed,
                 'receipt_count' => $receiptCount,
                 'percentage' => $category->annual_limit > 0
                     ? round(($claimed / $category->annual_limit) * 100, 1)
                     : 0,
+                'metadata' => $category->metadata,
             ];
-        })->filter(fn ($item) => $item['claimed_amount'] > 0)->values();
+        })
+        // Sort: claimed categories first (by percentage desc), then unclaimed alphabetically
+        ->sortBy(function ($item) {
+            return $item['claimed_amount'] > 0 ? -$item['percentage'] : 1000 + ord($item['name'][0]);
+        })
+        ->values();
 
         $recentReceipts = Receipt::where('user_id', $userId)
             ->latest()

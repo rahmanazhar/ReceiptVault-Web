@@ -94,7 +94,7 @@ export default function DashboardIndex({ stats, monthlySpending, categoryDistrib
                                 <HelpTooltip text="Progress toward annual LHDN tax relief limits by category" />
                             </div>
                             <div className="mt-4 space-y-3">
-                                <TaxReliefWidget data={taxReliefProgress} />
+                                <TaxReliefWidget data={taxReliefProgress} limit={8} showViewAll />
                             </div>
                         </Card>
 

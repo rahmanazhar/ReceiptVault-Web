@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\V1\Auth\{
 };
 use App\Http\Controllers\Api\V1\{
     CategoryController,
+    DocumentController,
     MedicalCertificateController,
     ReceiptController,
     TransactionController
@@ -45,6 +46,17 @@ Route::middleware('auth:api')->group(function () {
         Route::delete('{receipt}', [ReceiptController::class, 'destroy']);
         Route::get('{receipt}/transactions', [ReceiptController::class, 'transactions']);
         Route::post('{receipt}/process', [ReceiptController::class, 'processOcr'])
+            ->middleware('throttle:ocr');
+    });
+
+    // Document routes
+    Route::prefix('documents')->group(function () {
+        Route::get('/', [DocumentController::class, 'index']);
+        Route::post('/', [DocumentController::class, 'store']);
+        Route::get('{document}', [DocumentController::class, 'show']);
+        Route::post('{document}', [DocumentController::class, 'update']);
+        Route::delete('{document}', [DocumentController::class, 'destroy']);
+        Route::post('{document}/process', [DocumentController::class, 'processOcr'])
             ->middleware('throttle:ocr');
     });
 
