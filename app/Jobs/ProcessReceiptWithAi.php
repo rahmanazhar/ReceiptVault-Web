@@ -27,7 +27,7 @@ class ProcessReceiptWithAi implements ShouldQueue
     public function handle(AbacusAiService $aiService): void
     {
         $receipt = Receipt::find($this->receiptId);
-        if (!$receipt || $receipt->status === 'completed') {
+        if (!$receipt) {
             return;
         }
 

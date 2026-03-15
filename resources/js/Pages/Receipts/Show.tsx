@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { Head, useForm, router } from '@inertiajs/react';
 import AppLayout from '@/Layouts/AppLayout';
 import TopBar from '@/Components/navigation/TopBar';
@@ -17,18 +18,33 @@ interface Props {
     lhdnCategories: LhdnTaxRelief[];
 }
 
-export default function ReceiptShow({ receipt, categories, lhdnCategories }: Props) {
-    const { data, setData, put, processing, errors } = useForm({
-        merchant_name: receipt.merchant_name || '',
-        total_amount: receipt.total_amount || '',
-        tax_amount: receipt.tax_amount || '',
-        subtotal_amount: receipt.subtotal_amount || '',
-        purchase_date: receipt.purchase_date || '',
-        payment_method: receipt.payment_method || '',
-        receipt_number: receipt.receipt_number || '',
-        notes: receipt.notes || '',
+// Format date for input[type=date] - handles "2026-03-11T00:00:00.000000Z" -> "2026-03-11"
+function formatDateForInput(date: string | null | undefined): string {
+    if (!date) return '';
+    return date.substring(0, 10);
+}
+
+function getFormValues(receipt: Receipt) {
+    return {
+        merchant_name: receipt.merchant_name ?? '',
+        total_amount: receipt.total_amount ?? '',
+        tax_amount: receipt.tax_amount ?? '',
+        subtotal_amount: receipt.subtotal_amount ?? '',
+        purchase_date: formatDateForInput(receipt.purchase_date),
+        payment_method: receipt.payment_method ?? '',
+        receipt_number: receipt.receipt_number ?? '',
+        notes: receipt.notes ?? '',
         status: receipt.status,
-    });
+    };
+}
+
+export default function ReceiptShow({ receipt, categories, lhdnCategories }: Props) {
+    const { data, setData, put, processing, errors, reset } = useForm(getFormValues(receipt));
+
+    // Update form when receipt data changes (e.g. after Retry AI, rotate, etc.)
+    useEffect(() => {
+        reset(getFormValues(receipt));
+    }, [receipt.id, receipt.merchant_name, receipt.total_amount, receipt.status, receipt.purchase_date]);
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
