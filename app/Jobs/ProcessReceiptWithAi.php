@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Domain\Models\Category;
 use App\Domain\Models\Receipt;
 use App\Domain\Models\Transaction;
 use App\Domain\Services\AbacusAiService;
@@ -56,9 +57,22 @@ class ProcessReceiptWithAi implements ShouldQueue
 
             // Auto-create a transaction from the receipt
             if ($result->totalAmount) {
+                // Resolve category from AI metadata
+                $categoryId = null;
+                $categoryName = $result->metadata['category'] ?? null;
+                if ($categoryName) {
+                    $categoryName = ucfirst($categoryName);
+                    $category = Category::firstOrCreate(
+                        ['user_id' => $receipt->user_id, 'name' => $categoryName],
+                        ['is_system' => false],
+                    );
+                    $categoryId = $category->id;
+                }
+
                 Transaction::create([
                     'user_id' => $receipt->user_id,
                     'receipt_id' => $receipt->id,
+                    'category_id' => $categoryId,
                     'description' => $result->merchantName ?? 'Receipt #' . $receipt->id,
                     'amount' => $result->totalAmount,
                     'currency' => $result->currency ?? 'MYR',
