@@ -201,4 +201,32 @@ class ReceiptWebController extends Controller
 
         return Storage::disk('public')->download($path, $filename);
     }
+
+    public function recrop(Request $request, Receipt $receipt)
+    {
+        if ($receipt->user_id !== $request->user()->id) {
+            abort(403);
+        }
+
+        $request->validate([
+            'image' => ['required', 'file', 'mimes:jpeg,png,jpg', 'max:10240'],
+        ]);
+
+        $file = $request->file('image');
+        $filename = \Illuminate\Support\Str::uuid() . '.' . $file->getClientOriginalExtension();
+        $newPath = $file->storeAs('receipts', $filename, 'public');
+
+        // Delete old image
+        if ($receipt->image_path && Storage::disk('public')->exists($receipt->image_path)) {
+            Storage::disk('public')->delete($receipt->image_path);
+        }
+
+        $receipt->update([
+            'image_path' => $newPath,
+            'file_size' => $file->getSize(),
+            'mime_type' => $file->getMimeType(),
+        ]);
+
+        return back()->with('success', 'Receipt image updated.');
+    }
 }

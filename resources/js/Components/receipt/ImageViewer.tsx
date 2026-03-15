@@ -1,6 +1,6 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import { router } from '@inertiajs/react';
-import { downloadFromUrl } from '@/lib/imageProcessing';
+import { downloadFromUrl, waitForOpenCv, canvasToBlob } from '@/lib/imageProcessing';
 import {
     ArrowUturnLeftIcon,
     ArrowUturnRightIcon,
@@ -8,7 +8,9 @@ import {
     MagnifyingGlassPlusIcon,
     MagnifyingGlassMinusIcon,
     ArrowsPointingOutIcon,
+    ScissorsIcon,
 } from '@heroicons/react/24/outline';
+import CornerEditor from './CornerEditor';
 
 type EnhanceMode = 'original' | 'enhanced' | 'scan';
 
@@ -22,6 +24,8 @@ export default function ImageViewer({ imageUrl, receiptId, merchantName }: Props
     const [zoom, setZoom] = useState(1);
     const [rotating, setRotating] = useState(false);
     const [enhance, setEnhance] = useState<EnhanceMode>('original');
+    const [cropping, setCropping] = useState(false);
+    const [cropFile, setCropFile] = useState<File | null>(null);
     const containerRef = useRef<HTMLDivElement>(null);
 
     const handleRotate = (degrees: number) => {
@@ -42,7 +46,33 @@ export default function ImageViewer({ imageUrl, receiptId, merchantName }: Props
         downloadFromUrl(imageUrl, `receipt-${merchantName?.replace(/\s+/g, '_') || receiptId}.jpg`);
     };
 
-    // CSS filters for enhancement modes
+    const handleStartCrop = useCallback(async () => {
+        if (!imageUrl) return;
+        // Fetch the current image as a File for the CornerEditor
+        const response = await fetch(imageUrl);
+        const blob = await response.blob();
+        const file = new File([blob], `receipt-${receiptId}.png`, { type: blob.type });
+        setCropFile(file);
+        setCropping(true);
+    }, [imageUrl, receiptId]);
+
+    const handleCropConfirm = (blob: Blob) => {
+        // Upload the cropped image to replace the current one
+        const formData = new FormData();
+        formData.append('image', blob, `receipt-${receiptId}-cropped.png`);
+        router.post(`/receipts/${receiptId}/recrop`, formData, {
+            forceFormData: true,
+            preserveScroll: true,
+            onSuccess: () => { setCropping(false); setCropFile(null); },
+            onError: () => { setCropping(false); setCropFile(null); },
+        });
+    };
+
+    const handleCropCancel = () => {
+        setCropping(false);
+        setCropFile(null);
+    };
+
     const filterStyle = enhance === 'enhanced'
         ? 'grayscale(100%) contrast(1.4) brightness(1.1)'
         : enhance === 'scan'
@@ -57,50 +87,35 @@ export default function ImageViewer({ imageUrl, receiptId, merchantName }: Props
         );
     }
 
+    // Crop mode - show CornerEditor
+    if (cropping && cropFile) {
+        return (
+            <CornerEditor
+                file={cropFile}
+                onConfirm={handleCropConfirm}
+                onCancel={handleCropCancel}
+            />
+        );
+    }
+
     return (
         <div className="space-y-3">
-            {/* Toolbar row 1: rotate, zoom, download */}
+            {/* Toolbar row 1 */}
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-1">
-                    <ToolButton
-                        icon={<ArrowUturnLeftIcon className="h-4 w-4" />}
-                        label="Rotate left"
-                        onClick={() => handleRotate(-90)}
-                        disabled={rotating}
-                    />
-                    <ToolButton
-                        icon={<ArrowUturnRightIcon className="h-4 w-4" />}
-                        label="Rotate right"
-                        onClick={() => handleRotate(90)}
-                        disabled={rotating}
-                    />
+                    <ToolButton icon={<ArrowUturnLeftIcon className="h-4 w-4" />} label="Rotate left" onClick={() => handleRotate(-90)} disabled={rotating} />
+                    <ToolButton icon={<ArrowUturnRightIcon className="h-4 w-4" />} label="Rotate right" onClick={() => handleRotate(90)} disabled={rotating} />
                     <div className="w-px h-5 bg-[var(--color-border)] mx-1" />
-                    <ToolButton
-                        icon={<MagnifyingGlassPlusIcon className="h-4 w-4" />}
-                        label="Zoom in"
-                        onClick={handleZoomIn}
-                    />
-                    <ToolButton
-                        icon={<MagnifyingGlassMinusIcon className="h-4 w-4" />}
-                        label="Zoom out"
-                        onClick={handleZoomOut}
-                    />
-                    <ToolButton
-                        icon={<ArrowsPointingOutIcon className="h-4 w-4" />}
-                        label="Reset zoom"
-                        onClick={handleZoomReset}
-                    />
+                    <ToolButton icon={<MagnifyingGlassPlusIcon className="h-4 w-4" />} label="Zoom in" onClick={handleZoomIn} />
+                    <ToolButton icon={<MagnifyingGlassMinusIcon className="h-4 w-4" />} label="Zoom out" onClick={handleZoomOut} />
+                    <ToolButton icon={<ArrowsPointingOutIcon className="h-4 w-4" />} label="Reset zoom" onClick={handleZoomReset} />
+                    <div className="w-px h-5 bg-[var(--color-border)] mx-1" />
+                    <ToolButton icon={<ScissorsIcon className="h-4 w-4" />} label="Crop & Flatten" onClick={handleStartCrop} accent />
                 </div>
-
-                <ToolButton
-                    icon={<ArrowDownTrayIcon className="h-4 w-4" />}
-                    label="Download"
-                    onClick={handleDownload}
-                    accent
-                />
+                <ToolButton icon={<ArrowDownTrayIcon className="h-4 w-4" />} label="Download" onClick={handleDownload} accent />
             </div>
 
-            {/* Toolbar row 2: enhancement modes */}
+            {/* Enhancement modes */}
             <div className="flex items-center gap-2">
                 {(['original', 'enhanced', 'scan'] as const).map((mode) => (
                     <button
@@ -118,29 +133,17 @@ export default function ImageViewer({ imageUrl, receiptId, merchantName }: Props
             </div>
 
             {/* Image */}
-            <div
-                ref={containerRef}
-                className="relative rounded-lg bg-[var(--color-bg-tertiary)] overflow-auto"
-                style={{ maxHeight: '500px' }}
-            >
+            <div ref={containerRef} className="relative rounded-lg bg-[var(--color-bg-tertiary)] overflow-auto" style={{ maxHeight: '500px' }}>
                 <img
                     src={imageUrl}
                     alt="Receipt"
                     className="w-full h-auto object-contain select-none transition-all duration-300"
-                    style={{
-                        transform: `scale(${zoom})`,
-                        transformOrigin: 'top center',
-                        filter: filterStyle,
-                    }}
+                    style={{ transform: `scale(${zoom})`, transformOrigin: 'top center', filter: filterStyle }}
                     draggable={false}
                 />
-
                 {zoom !== 1 && (
-                    <div className="absolute bottom-2 left-2 bg-black/60 text-white text-xs px-2 py-1 rounded">
-                        {Math.round(zoom * 100)}%
-                    </div>
+                    <div className="absolute bottom-2 left-2 bg-black/60 text-white text-xs px-2 py-1 rounded">{Math.round(zoom * 100)}%</div>
                 )}
-
                 {rotating && (
                     <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
                         <svg className="animate-spin h-6 w-6 text-white" viewBox="0 0 24 24" fill="none">
@@ -155,20 +158,12 @@ export default function ImageViewer({ imageUrl, receiptId, merchantName }: Props
 }
 
 function ToolButton({ icon, label, onClick, disabled, accent }: {
-    icon: React.ReactNode;
-    label: string;
-    onClick: () => void;
-    disabled?: boolean;
-    accent?: boolean;
+    icon: React.ReactNode; label: string; onClick: () => void; disabled?: boolean; accent?: boolean;
 }) {
     return (
-        <button
-            onClick={onClick}
-            disabled={disabled}
-            title={label}
+        <button onClick={onClick} disabled={disabled} title={label}
             className={`p-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
-                accent
-                    ? 'text-[var(--color-accent)] hover:bg-[var(--color-accent-subtle)]'
+                accent ? 'text-[var(--color-accent)] hover:bg-[var(--color-accent-subtle)]'
                     : 'text-[var(--color-text-muted)] hover:bg-[var(--color-bg-tertiary)] hover:text-[var(--color-text-primary)]'
             }`}
         >

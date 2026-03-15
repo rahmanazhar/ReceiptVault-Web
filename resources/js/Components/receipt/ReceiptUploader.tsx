@@ -8,27 +8,25 @@ import CornerEditor from './CornerEditor';
 import {
     CloudArrowUpIcon,
     CameraIcon,
-    DocumentIcon,
 } from '@heroicons/react/24/outline';
 import { cn } from '@/lib/utils';
 
-type Tab = 'upload' | 'camera' | 'scan';
+type Tab = 'upload' | 'camera';
 type Stage = 'select' | 'crop' | 'uploading';
 
 export default function ReceiptUploader() {
     const [activeTab, setActiveTab] = useState<Tab>('upload');
     const [stage, setStage] = useState<Stage>('select');
-    const [selectedFile, setSelectedFile] = useState<File | null>(null);
+    const [cropFile, setCropFile] = useState<File | null>(null);
 
     const onDrop = useCallback((acceptedFiles: File[]) => {
         const f = acceptedFiles[0];
         if (f) {
             if (f.type === 'application/pdf') {
-                // PDFs go straight to upload
                 uploadFile(f, 'upload');
             } else {
-                // Images go to corner editor for cropping
-                setSelectedFile(f);
+                // Show CornerEditor for images
+                setCropFile(f);
                 setStage('crop');
             }
         }
@@ -45,17 +43,25 @@ export default function ReceiptUploader() {
         multiple: false,
     });
 
+    // Camera auto-extracted - upload directly
     const handleCameraCapture = (blob: Blob) => {
-        const source = activeTab === 'camera' ? 'camera' : 'scan';
-        uploadFile(blob, source);
+        uploadFile(blob, 'camera');
     };
 
+    // Camera "Adjust Crop" - open CornerEditor with raw frame
+    const handleCameraAdjustCrop = (file: File) => {
+        setCropFile(file);
+        setStage('crop');
+    };
+
+    // CornerEditor confirmed
     const handleCropConfirm = (blob: Blob) => {
-        uploadFile(blob, 'upload');
+        uploadFile(blob, cropFile ? 'upload' : 'camera');
     };
 
+    // Skip crop - upload original
     const handleSkipCrop = () => {
-        if (selectedFile) uploadFile(selectedFile, 'upload');
+        if (cropFile) uploadFile(cropFile, 'upload');
     };
 
     const uploadFile = (file: File | Blob, source: string) => {
@@ -65,19 +71,18 @@ export default function ReceiptUploader() {
         formData.append('source', source);
         router.post('/receipts', formData, {
             forceFormData: true,
-            onFinish: () => { setStage('select'); setSelectedFile(null); },
+            onFinish: () => { setStage('select'); setCropFile(null); },
         });
     };
 
     const clearSelection = () => {
         setStage('select');
-        setSelectedFile(null);
+        setCropFile(null);
     };
 
     const tabs: { key: Tab; label: string; icon: React.ReactNode }[] = [
         { key: 'upload', label: 'Upload', icon: <CloudArrowUpIcon className="h-5 w-5" /> },
         { key: 'camera', label: 'Camera', icon: <CameraIcon className="h-5 w-5" /> },
-        { key: 'scan', label: 'Scan', icon: <DocumentIcon className="h-5 w-5" /> },
     ];
 
     return (
@@ -101,16 +106,16 @@ export default function ReceiptUploader() {
                 ))}
             </div>
 
-            {/* Stage: Crop - adjust corners before upload */}
-            {stage === 'crop' && selectedFile && (
+            {/* Crop stage - CornerEditor */}
+            {stage === 'crop' && cropFile && (
                 <CornerEditor
-                    file={selectedFile}
+                    file={cropFile}
                     onConfirm={handleCropConfirm}
                     onCancel={handleSkipCrop}
                 />
             )}
 
-            {/* Stage: Uploading */}
+            {/* Uploading */}
             {stage === 'uploading' && (
                 <div className="flex items-center justify-center h-64">
                     <div className="text-center">
@@ -124,7 +129,7 @@ export default function ReceiptUploader() {
                 </div>
             )}
 
-            {/* Stage: Selection */}
+            {/* Selection */}
             {stage === 'select' && (
                 <>
                     {activeTab === 'upload' && (
@@ -148,10 +153,10 @@ export default function ReceiptUploader() {
                         </div>
                     )}
 
-                    {(activeTab === 'camera' || activeTab === 'scan') && (
+                    {activeTab === 'camera' && (
                         <CameraCapture
                             onCapture={handleCameraCapture}
-                            scanMode={activeTab === 'scan'}
+                            onAdjustCrop={handleCameraAdjustCrop}
                         />
                     )}
                 </>

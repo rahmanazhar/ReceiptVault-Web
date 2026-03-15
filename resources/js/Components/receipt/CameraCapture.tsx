@@ -5,15 +5,16 @@ import { waitForOpenCv, canvasToBlob } from '@/lib/imageProcessing';
 
 interface Props {
     onCapture: (blob: Blob) => void;
-    scanMode?: boolean;
+    onAdjustCrop?: (file: File) => void;
 }
 
-export default function CameraCapture({ onCapture, scanMode = false }: Props) {
+export default function CameraCapture({ onCapture, onAdjustCrop }: Props) {
     const videoRef = useRef<HTMLVideoElement>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const resultCanvasRef = useRef<HTMLCanvasElement>(null);
     const animFrameRef = useRef<number | null>(null);
     const streamRef = useRef<MediaStream | null>(null);
+    const rawCanvasRef = useRef<HTMLCanvasElement | null>(null);
 
     const [facingMode, setFacingMode] = useState<'user' | 'environment'>('environment');
     const [hasPermission, setHasPermission] = useState<boolean | null>(null);
@@ -93,6 +94,13 @@ export default function CameraCapture({ onCapture, scanMode = false }: Props) {
         canvas.height = video.videoHeight;
         canvas.getContext('2d')!.drawImage(video, 0, 0);
 
+        // Save raw frame for "Adjust Crop"
+        const raw = document.createElement('canvas');
+        raw.width = canvas.width;
+        raw.height = canvas.height;
+        raw.getContext('2d')!.drawImage(canvas, 0, 0);
+        rawCanvasRef.current = raw;
+
         const scanner = new jscanify();
 
         // Get corners to calculate correct paper dimensions
@@ -137,9 +145,20 @@ export default function CameraCapture({ onCapture, scanMode = false }: Props) {
         onCapture(blob);
     }, [captured, onCapture]);
 
+    const handleAdjustCrop = useCallback(() => {
+        if (!rawCanvasRef.current || !onAdjustCrop) return;
+        rawCanvasRef.current.toBlob((blob) => {
+            if (blob) {
+                const file = new File([blob], `camera-${Date.now()}.png`, { type: 'image/png' });
+                onAdjustCrop(file);
+            }
+        }, 'image/png');
+    }, [onAdjustCrop]);
+
     const handleRetake = () => {
         setCaptured(null);
         setCapturedUrl(null);
+        rawCanvasRef.current = null;
     };
 
     const toggleCamera = () => setFacingMode(prev => prev === 'user' ? 'environment' : 'user');
@@ -162,7 +181,10 @@ export default function CameraCapture({ onCapture, scanMode = false }: Props) {
                 </div>
                 <div className="flex gap-3">
                     <Button onClick={handleConfirm} className="flex-1">Use this photo</Button>
-                    <Button variant="secondary" onClick={handleRetake}>Retake</Button>
+                    {onAdjustCrop && (
+                        <Button variant="secondary" onClick={handleAdjustCrop}>Adjust Crop</Button>
+                    )}
+                    <Button variant="ghost" onClick={handleRetake}>Retake</Button>
                 </div>
             </div>
         );
@@ -195,12 +217,12 @@ export default function CameraCapture({ onCapture, scanMode = false }: Props) {
 
             <Button onClick={handleCapture} disabled={!cvReady} className="w-full">
                 <CameraIcon className="h-5 w-5 mr-2" />
-                {scanMode ? 'Scan Document' : 'Capture'}
+                Capture
             </Button>
 
             {cvReady && (
                 <p className="text-xs text-[var(--color-text-muted)] text-center">
-                    Position the document in view. The orange border shows what will be captured.
+                    Position the document in view. The orange border shows detected edges.
                 </p>
             )}
         </div>
