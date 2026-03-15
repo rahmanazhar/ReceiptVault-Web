@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Web;
 
 use App\Http\Controllers\Controller;
 use App\Domain\Models\Receipt;
+use App\Domain\Models\Transaction;
 use App\Domain\Models\Category;
 use App\Domain\Models\LhdnTaxRelief;
 use App\Domain\Services\ReceiptService;
@@ -113,9 +114,29 @@ class ReceiptWebController extends Controller
             'notes' => ['nullable', 'string'],
             'additional_fields' => ['nullable', 'array'],
             'status' => ['nullable', 'in:pending,processing,review_needed,completed,failed'],
+            'is_tax_deductible' => ['nullable', 'boolean'],
+            'lhdn_category_code' => ['nullable', 'string'],
         ]);
 
+        // Extract tax fields before updating receipt
+        $isTaxDeductible = (bool) ($validated['is_tax_deductible'] ?? false);
+        $lhdnCategoryCode = $isTaxDeductible ? ($validated['lhdn_category_code'] ?? null) : null;
+        unset($validated['is_tax_deductible'], $validated['lhdn_category_code']);
+
         $receipt->update($validated);
+
+        // Sync tax relief fields to the associated transaction
+        $transaction = Transaction::where('receipt_id', $receipt->id)->first();
+        if ($transaction) {
+            $transaction->update([
+                'is_tax_deductible' => $isTaxDeductible,
+                'lhdn_category_code' => $lhdnCategoryCode,
+                'tax_relief_amount' => $isTaxDeductible && $lhdnCategoryCode ? $transaction->amount : null,
+                'tax_year' => $receipt->purchase_date
+                    ? (int) date('Y', strtotime($receipt->purchase_date))
+                    : (int) date('Y'),
+            ]);
+        }
 
         return redirect("/receipts/{$receipt->id}")
             ->with('success', 'Receipt updated successfully.');

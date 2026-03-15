@@ -35,6 +35,8 @@ function formatDateForInput(date: string | null | undefined): string {
 }
 
 function getFormValues(receipt: Receipt) {
+    // Get tax info from first transaction if available
+    const tx = receipt.transactions?.[0];
     return {
         merchant_name: receipt.merchant_name ?? '',
         total_amount: receipt.total_amount ?? '',
@@ -45,6 +47,8 @@ function getFormValues(receipt: Receipt) {
         receipt_number: receipt.receipt_number ?? '',
         notes: receipt.notes ?? '',
         status: receipt.status,
+        is_tax_deductible: tx?.is_tax_deductible ?? false,
+        lhdn_category_code: tx?.lhdn_category_code ?? '',
     };
 }
 
@@ -178,6 +182,59 @@ export default function ReceiptShow({ receipt, categories, lhdnCategories }: Pro
                                             error={errors.tax_amount}
                                         />
                                     </div>
+                                </div>
+
+                                {/* Tax Relief */}
+                                <div className="space-y-4 border-t border-[var(--color-border)] pt-4">
+                                    <p className="text-xs uppercase tracking-wider text-[var(--color-text-muted)] font-medium">LHDN Tax Relief</p>
+
+                                    <div className="flex items-center gap-3">
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                const newVal = !data.is_tax_deductible;
+                                                setData(prev => ({
+                                                    ...prev,
+                                                    is_tax_deductible: newVal,
+                                                    lhdn_category_code: newVal ? prev.lhdn_category_code : '',
+                                                }));
+                                            }}
+                                            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                                                data.is_tax_deductible
+                                                    ? 'bg-[var(--color-accent)]'
+                                                    : 'bg-[var(--color-bg-tertiary)] border border-[var(--color-border)]'
+                                            }`}
+                                        >
+                                            <span
+                                                className={`inline-block h-4 w-4 rounded-full bg-white transition-transform ${
+                                                    data.is_tax_deductible ? 'translate-x-6' : 'translate-x-1'
+                                                }`}
+                                            />
+                                        </button>
+                                        <div className="flex items-center gap-1.5">
+                                            <label className="text-sm font-medium text-[var(--color-text-secondary)]">
+                                                Tax Relief Claimable
+                                            </label>
+                                            <HelpTooltip text="Mark this receipt as eligible for LHDN tax relief deduction" />
+                                        </div>
+                                    </div>
+
+                                    {data.is_tax_deductible && (
+                                        <Select
+                                            id="lhdn_category_code"
+                                            label="LHDN Relief Category"
+                                            helpText="Select which LHDN tax relief category this receipt falls under"
+                                            value={data.lhdn_category_code}
+                                            onChange={(e) => setData('lhdn_category_code', e.target.value)}
+                                            options={lhdnCategories
+                                                .filter(c => c.is_active)
+                                                .map(c => ({
+                                                    value: c.code,
+                                                    label: `${c.name}${c.parent_code ? ' (sub-limit)' : ''} — RM ${parseFloat(c.annual_limit).toLocaleString()}`,
+                                                }))}
+                                            placeholder="Select LHDN category"
+                                        />
+                                    )}
                                 </div>
 
                                 {/* Details */}
