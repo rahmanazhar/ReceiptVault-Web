@@ -48,6 +48,11 @@ class User extends Authenticatable implements JWTSubject
         return $this->hasMany(Receipt::class);
     }
 
+    public function medicalCertificates(): HasMany
+    {
+        return $this->hasMany(MedicalCertificate::class);
+    }
+
     public function transactions(): HasMany
     {
         return $this->hasMany(Transaction::class);

@@ -32,6 +32,7 @@ export interface Receipt {
     ai_confidence_score: string | null;
     ai_raw_response: Record<string, unknown> | null;
     additional_fields: Record<string, string> | null;
+    metadata: ReceiptMetadata | null;
     notes: string | null;
     status: 'pending' | 'processing' | 'review_needed' | 'completed' | 'failed';
     created_at: string;
@@ -39,6 +40,21 @@ export interface Receipt {
     transactions?: Transaction[];
     image_url?: string;
     thumbnail_url?: string;
+}
+
+export interface ReceiptMetadataItem {
+    name: string;
+    quantity: number;
+    unit_price: number;
+    total: number;
+}
+
+export interface ReceiptMetadata {
+    category: string | null;
+    description: string | null;
+    is_taxable: boolean | null;
+    tax_type: string | null;
+    items: ReceiptMetadataItem[] | null;
 }
 
 export interface Transaction {
@@ -92,6 +108,37 @@ export interface LhdnTaxRelief {
     metadata: Record<string, unknown> | null;
     claimed_amount?: number;
     receipt_count?: number;
+}
+
+export interface MedicalCertificate {
+    id: number;
+    user_id: number;
+    image_path: string;
+    thumbnail_path: string | null;
+    original_filename: string | null;
+    file_size: number | null;
+    mime_type: string | null;
+    source: 'upload' | 'camera' | 'scan' | null;
+    patient_name: string | null;
+    doctor_name: string | null;
+    clinic_name: string | null;
+    diagnosis: string | null;
+    mc_start_date: string | null;
+    mc_end_date: string | null;
+    mc_days: number | null;
+    mc_number: string | null;
+    issue_date: string | null;
+    doctor_reg_number: string | null;
+    notes: string | null;
+    ocr_data: Record<string, unknown> | null;
+    ai_confidence_score: string | null;
+    ai_raw_response: Record<string, unknown> | null;
+    additional_fields: Record<string, string> | null;
+    status: 'pending' | 'processing' | 'review_needed' | 'completed' | 'failed';
+    created_at: string;
+    updated_at: string;
+    image_url?: string;
+    thumbnail_url?: string;
 }
 
 export interface PaginatedResponse<T> {

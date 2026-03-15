@@ -6,9 +6,9 @@ import { Card } from '@/Components/ui/Card';
 import Badge from '@/Components/ui/Badge';
 import EmptyState from '@/Components/ui/EmptyState';
 import Tooltip from '@/Components/ui/Tooltip';
-import { formatCurrency, formatDate } from '@/lib/utils';
+import { formatDate } from '@/lib/utils';
 import {
-    DocumentTextIcon,
+    ClipboardDocumentCheckIcon,
     ChevronLeftIcon,
     ChevronRightIcon,
     MagnifyingGlassIcon,
@@ -22,10 +22,10 @@ import {
     ArrowPathIcon,
     TrashIcon,
 } from '@heroicons/react/24/outline';
-import type { Receipt, PaginatedResponse } from '@/types/models';
+import type { MedicalCertificate, PaginatedResponse } from '@/types/models';
 
 interface Props {
-    receipts: PaginatedResponse<Receipt>;
+    medicalCertificates: PaginatedResponse<MedicalCertificate>;
     filters: {
         search?: string;
         status?: string;
@@ -43,7 +43,21 @@ const STATUS_OPTIONS = [
     { value: 'failed', label: 'Failed' },
 ];
 
-export default function ReceiptsIndex({ receipts, filters }: Props) {
+function formatMcPeriod(startDate: string | null, endDate: string | null, days: number | null): string {
+    if (!startDate && !endDate) return '—';
+    const parts: string[] = [];
+    if (startDate) parts.push(formatDate(startDate));
+    if (endDate && endDate !== startDate) {
+        parts.push('–');
+        parts.push(formatDate(endDate));
+    }
+    if (days !== null && days !== undefined) {
+        parts.push(`(${days} day${days !== 1 ? 's' : ''})`);
+    }
+    return parts.join(' ');
+}
+
+export default function MedicalCertificatesIndex({ medicalCertificates, filters }: Props) {
     const [search, setSearch] = useState(filters.search || '');
     const [showFilters, setShowFilters] = useState(
         !!(filters.status || filters.date_from || filters.date_to)
@@ -61,12 +75,11 @@ export default function ReceiptsIndex({ receipts, filters }: Props) {
 
     const applyFilters = (newFilters: Record<string, string | undefined>) => {
         const merged = { ...filters, ...newFilters };
-        // Remove empty values
         const cleaned: Record<string, string> = {};
         Object.entries(merged).forEach(([k, v]) => {
             if (v) cleaned[k] = v;
         });
-        router.get('/receipts', cleaned, { preserveState: true, preserveScroll: true });
+        router.get('/medical-certificates', cleaned, { preserveState: true, preserveScroll: true });
     };
 
     const handleSearch = (e: React.FormEvent) => {
@@ -81,12 +94,11 @@ export default function ReceiptsIndex({ receipts, filters }: Props) {
 
     const clearAllFilters = () => {
         setSearch('');
-        router.get('/receipts', {}, { preserveState: true });
+        router.get('/medical-certificates', {}, { preserveState: true });
     };
 
     const hasActiveFilters = !!(filters.search || filters.status || filters.date_from || filters.date_to);
 
-    // Build pagination URL preserving filters
     const pageUrl = (page: number) => {
         const params = new URLSearchParams();
         if (filters.search) params.set('search', filters.search);
@@ -94,20 +106,19 @@ export default function ReceiptsIndex({ receipts, filters }: Props) {
         if (filters.date_from) params.set('date_from', filters.date_from);
         if (filters.date_to) params.set('date_to', filters.date_to);
         params.set('page', String(page));
-        return `/receipts?${params.toString()}`;
+        return `/medical-certificates?${params.toString()}`;
     };
 
     return (
         <>
-            <Head title="Receipts" />
+            <Head title="Medical Certificates" />
             <AppLayout>
-                <TopBar title="Receipts" subtitle={`${receipts.total} total`} action={{ label: 'Upload Receipt', href: '/receipts/create' }} />
+                <TopBar title="Medical Certificates" subtitle={`${medicalCertificates.total} total`} action={{ label: 'Upload MC', href: '/medical-certificates/create' }} />
 
                 <div className="p-4 sm:p-6 space-y-4">
                     {/* Search & Filter Bar */}
                     <Card>
                         <div className="space-y-3">
-                            {/* Search row */}
                             <div className="flex gap-3">
                                 <form onSubmit={handleSearch} className="flex-1 relative">
                                     <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[var(--color-text-muted)]" />
@@ -115,7 +126,7 @@ export default function ReceiptsIndex({ receipts, filters }: Props) {
                                         type="text"
                                         value={search}
                                         onChange={(e) => setSearch(e.target.value)}
-                                        placeholder="Search by merchant, receipt number, or notes..."
+                                        placeholder="Search by patient, clinic, MC number, or notes..."
                                         className="w-full rounded-lg pl-9 pr-9 py-2 text-sm bg-[var(--color-bg-tertiary)] text-[var(--color-text-primary)] border border-[var(--color-border)] placeholder:text-[var(--color-text-muted)] focus:border-[var(--color-border-focus)] focus:outline-none focus:ring-1 focus:ring-[var(--color-accent)] transition-colors"
                                     />
                                     {search && (
@@ -142,7 +153,6 @@ export default function ReceiptsIndex({ receipts, filters }: Props) {
                                 </Tooltip>
                             </div>
 
-                            {/* Filter row */}
                             {showFilters && (
                                 <div className="flex flex-col sm:flex-row gap-3 pt-3 border-t border-[var(--color-border)]">
                                     <div className="sm:w-44">
@@ -194,7 +204,6 @@ export default function ReceiptsIndex({ receipts, filters }: Props) {
                                 </div>
                             )}
 
-                            {/* Active filter tags */}
                             {hasActiveFilters && (
                                 <div className="flex flex-wrap gap-2">
                                     {filters.search && (
@@ -215,17 +224,17 @@ export default function ReceiptsIndex({ receipts, filters }: Props) {
                     </Card>
 
                     {/* Content */}
-                    {receipts.data.length === 0 ? (
+                    {medicalCertificates.data.length === 0 ? (
                         <EmptyState
-                            icon={<DocumentTextIcon className="h-12 w-12" />}
-                            title={hasActiveFilters ? 'No receipts match your filters' : 'No receipts yet'}
+                            icon={<ClipboardDocumentCheckIcon className="h-12 w-12" />}
+                            title={hasActiveFilters ? 'No medical certificates match your filters' : 'No medical certificates yet'}
                             description={hasActiveFilters
                                 ? 'Try adjusting your search or filters to find what you\'re looking for.'
-                                : 'Upload your first receipt to start tracking your expenses and tax deductions.'
+                                : 'Upload your first medical certificate to start tracking your medical leave records.'
                             }
                             action={hasActiveFilters
                                 ? { label: 'Clear Filters', onClick: clearAllFilters }
-                                : { label: 'Upload Receipt', onClick: () => window.location.href = '/receipts/create' }
+                                : { label: 'Upload MC', onClick: () => window.location.href = '/medical-certificates/create' }
                             }
                         />
                     ) : (
@@ -236,66 +245,66 @@ export default function ReceiptsIndex({ receipts, filters }: Props) {
                                     <thead>
                                         <tr className="border-b border-[var(--color-border)]">
                                             <th className="text-left text-xs font-medium text-[var(--color-text-muted)] uppercase px-4 py-3 w-16"></th>
-                                            <th className="text-left text-xs font-medium text-[var(--color-text-muted)] uppercase px-4 py-3">Merchant</th>
-                                            <th className="text-left text-xs font-medium text-[var(--color-text-muted)] uppercase px-4 py-3">Date</th>
-                                            <th className="text-right text-xs font-medium text-[var(--color-text-muted)] uppercase px-4 py-3">Amount</th>
-                                            <th className="text-left text-xs font-medium text-[var(--color-text-muted)] uppercase px-4 py-3">Payment</th>
+                                            <th className="text-left text-xs font-medium text-[var(--color-text-muted)] uppercase px-4 py-3">Patient</th>
+                                            <th className="text-left text-xs font-medium text-[var(--color-text-muted)] uppercase px-4 py-3">Clinic</th>
+                                            <th className="text-left text-xs font-medium text-[var(--color-text-muted)] uppercase px-4 py-3">MC Period</th>
+                                            <th className="text-left text-xs font-medium text-[var(--color-text-muted)] uppercase px-4 py-3">MC No.</th>
                                             <th className="text-center text-xs font-medium text-[var(--color-text-muted)] uppercase px-4 py-3">Status</th>
                                             <th className="text-right text-xs font-medium text-[var(--color-text-muted)] uppercase px-4 py-3">AI</th>
                                             <th className="text-right text-xs font-medium text-[var(--color-text-muted)] uppercase px-4 py-3 w-16">Actions</th>
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {receipts.data.map((receipt) => (
+                                        {medicalCertificates.data.map((mc) => (
                                             <tr
-                                                key={receipt.id}
+                                                key={mc.id}
                                                 className="border-b border-[var(--color-border)] last:border-0 hover:bg-[var(--color-bg-tertiary)] transition-colors cursor-pointer"
-                                                onClick={() => router.visit(`/receipts/${receipt.id}`)}
+                                                onClick={() => router.visit(`/medical-certificates/${mc.id}`)}
                                             >
                                                 <td className="px-4 py-2">
-                                                    <ReceiptThumbnail receipt={receipt} />
+                                                    <McThumbnail mc={mc} />
                                                 </td>
                                                 <td className="px-4 py-3">
                                                     <p className="text-sm font-medium text-[var(--color-text-primary)] truncate max-w-[200px]">
-                                                        {receipt.merchant_name || 'Unknown Merchant'}
+                                                        {mc.patient_name || 'Unknown Patient'}
                                                     </p>
-                                                    {receipt.receipt_number && (
+                                                    {mc.doctor_name && (
                                                         <p className="text-xs text-[var(--color-text-muted)] truncate">
-                                                            #{receipt.receipt_number}
+                                                            Dr. {mc.doctor_name}
                                                         </p>
                                                     )}
                                                 </td>
+                                                <td className="px-4 py-3 text-sm text-[var(--color-text-secondary)] truncate max-w-[180px]">
+                                                    {mc.clinic_name || '—'}
+                                                </td>
                                                 <td className="px-4 py-3 text-sm text-[var(--color-text-secondary)] whitespace-nowrap">
-                                                    {receipt.purchase_date ? formatDate(receipt.purchase_date) : '—'}
+                                                    {formatMcPeriod(mc.mc_start_date, mc.mc_end_date, mc.mc_days)}
                                                 </td>
-                                                <td className="px-4 py-3 text-sm text-right font-semibold text-[var(--color-text-primary)] whitespace-nowrap">
-                                                    {formatCurrency(receipt.total_amount)}
-                                                </td>
-                                                <td className="px-4 py-3 text-sm text-[var(--color-text-secondary)] capitalize whitespace-nowrap">
-                                                    {receipt.payment_method?.replace('_', ' ') || '—'}
+                                                <td className="px-4 py-3 text-sm text-[var(--color-text-secondary)] whitespace-nowrap">
+                                                    {mc.mc_number || '—'}
                                                 </td>
                                                 <td className="px-4 py-3 text-center">
-                                                    <Badge variant={statusVariant(receipt.status)}>
-                                                        {receipt.status.replace('_', ' ')}
+                                                    <Badge variant={statusVariant(mc.status)}>
+                                                        {mc.status.replace('_', ' ')}
                                                     </Badge>
                                                 </td>
                                                 <td className="px-4 py-3 text-right">
-                                                    {receipt.ai_confidence_score ? (
+                                                    {mc.ai_confidence_score ? (
                                                         <span className={`text-xs font-medium ${
-                                                            parseFloat(receipt.ai_confidence_score) >= 0.8
+                                                            parseFloat(mc.ai_confidence_score) >= 0.8
                                                                 ? 'text-[var(--color-success)]'
-                                                                : parseFloat(receipt.ai_confidence_score) >= 0.5
+                                                                : parseFloat(mc.ai_confidence_score) >= 0.5
                                                                     ? 'text-[var(--color-warning)]'
                                                                     : 'text-[var(--color-error)]'
                                                         }`}>
-                                                            {Math.round(parseFloat(receipt.ai_confidence_score) * 100)}%
+                                                            {Math.round(parseFloat(mc.ai_confidence_score) * 100)}%
                                                         </span>
                                                     ) : (
                                                         <span className="text-xs text-[var(--color-text-muted)]">—</span>
                                                     )}
                                                 </td>
                                                 <td className="px-4 py-3 text-right">
-                                                    <RowActions receipt={receipt} />
+                                                    <RowActions mc={mc} />
                                                 </td>
                                             </tr>
                                         ))}
@@ -305,32 +314,27 @@ export default function ReceiptsIndex({ receipts, filters }: Props) {
 
                             {/* Mobile card view */}
                             <div className="md:hidden space-y-3">
-                                {receipts.data.map((receipt) => (
-                                    <Link key={receipt.id} href={`/receipts/${receipt.id}`}>
+                                {medicalCertificates.data.map((mc) => (
+                                    <Link key={mc.id} href={`/medical-certificates/${mc.id}`}>
                                         <Card hover>
                                             <div className="flex gap-3">
-                                                <ReceiptThumbnail receipt={receipt} size="lg" />
+                                                <McThumbnail mc={mc} size="lg" />
                                                 <div className="flex-1 min-w-0">
                                                     <div className="flex items-start justify-between gap-2">
                                                         <p className="font-medium text-sm text-[var(--color-text-primary)] truncate">
-                                                            {receipt.merchant_name || 'Unknown Merchant'}
+                                                            {mc.patient_name || 'Unknown Patient'}
                                                         </p>
-                                                        <Badge variant={statusVariant(receipt.status)}>
-                                                            {receipt.status.replace('_', ' ')}
+                                                        <Badge variant={statusVariant(mc.status)}>
+                                                            {mc.status.replace('_', ' ')}
                                                         </Badge>
                                                     </div>
                                                     <p className="text-xs text-[var(--color-text-muted)] mt-0.5">
-                                                        {receipt.purchase_date ? formatDate(receipt.purchase_date) : 'No date'}
+                                                        {mc.clinic_name || 'No clinic'}
                                                     </p>
                                                     <div className="flex items-center justify-between mt-2">
-                                                        <p className="text-lg font-bold text-[var(--color-text-primary)]">
-                                                            {formatCurrency(receipt.total_amount)}
+                                                        <p className="text-sm font-semibold text-[var(--color-text-primary)]">
+                                                            {formatMcPeriod(mc.mc_start_date, mc.mc_end_date, mc.mc_days)}
                                                         </p>
-                                                        {receipt.payment_method && (
-                                                            <p className="text-xs text-[var(--color-text-muted)] capitalize">
-                                                                {receipt.payment_method.replace('_', ' ')}
-                                                            </p>
-                                                        )}
                                                     </div>
                                                 </div>
                                             </div>
@@ -342,12 +346,12 @@ export default function ReceiptsIndex({ receipts, filters }: Props) {
                     )}
 
                     {/* Pagination */}
-                    {receipts.last_page > 1 && (
+                    {medicalCertificates.last_page > 1 && (
                         <div className="flex justify-center items-center gap-2 mt-4">
                             <Link
-                                href={receipts.current_page > 1 ? pageUrl(receipts.current_page - 1) : '#'}
+                                href={medicalCertificates.current_page > 1 ? pageUrl(medicalCertificates.current_page - 1) : '#'}
                                 className={`p-1.5 rounded-lg ${
-                                    receipts.current_page > 1
+                                    medicalCertificates.current_page > 1
                                         ? 'text-[var(--color-text-muted)] hover:bg-[var(--color-bg-tertiary)] hover:text-[var(--color-text-primary)]'
                                         : 'text-[var(--color-text-muted)]/30 pointer-events-none'
                                 }`}
@@ -356,12 +360,12 @@ export default function ReceiptsIndex({ receipts, filters }: Props) {
                             </Link>
 
                             <div className="hidden sm:flex gap-2">
-                                {Array.from({ length: receipts.last_page }, (_, i) => i + 1).map((page) => (
+                                {Array.from({ length: medicalCertificates.last_page }, (_, i) => i + 1).map((page) => (
                                     <Link
                                         key={page}
                                         href={pageUrl(page)}
                                         className={`px-3 py-1.5 rounded-lg text-sm ${
-                                            page === receipts.current_page
+                                            page === medicalCertificates.current_page
                                                 ? 'bg-[var(--color-accent)] text-[var(--color-text-inverse)]'
                                                 : 'text-[var(--color-text-muted)] hover:bg-[var(--color-bg-tertiary)]'
                                         }`}
@@ -372,13 +376,13 @@ export default function ReceiptsIndex({ receipts, filters }: Props) {
                             </div>
 
                             <span className="sm:hidden text-sm text-[var(--color-text-secondary)]">
-                                Page {receipts.current_page} of {receipts.last_page}
+                                Page {medicalCertificates.current_page} of {medicalCertificates.last_page}
                             </span>
 
                             <Link
-                                href={receipts.current_page < receipts.last_page ? pageUrl(receipts.current_page + 1) : '#'}
+                                href={medicalCertificates.current_page < medicalCertificates.last_page ? pageUrl(medicalCertificates.current_page + 1) : '#'}
                                 className={`p-1.5 rounded-lg ${
-                                    receipts.current_page < receipts.last_page
+                                    medicalCertificates.current_page < medicalCertificates.last_page
                                         ? 'text-[var(--color-text-muted)] hover:bg-[var(--color-bg-tertiary)] hover:text-[var(--color-text-primary)]'
                                         : 'text-[var(--color-text-muted)]/30 pointer-events-none'
                                 }`}
@@ -393,7 +397,7 @@ export default function ReceiptsIndex({ receipts, filters }: Props) {
     );
 }
 
-function RowActions({ receipt }: { receipt: Receipt }) {
+function RowActions({ mc }: { mc: MedicalCertificate }) {
     const [open, setOpen] = useState(false);
     const [confirmDelete, setConfirmDelete] = useState(false);
     const ref = useRef<HTMLDivElement>(null);
@@ -422,7 +426,7 @@ function RowActions({ receipt }: { receipt: Receipt }) {
             setConfirmDelete(true);
             return;
         }
-        router.delete(`/receipts/${receipt.id}`, { preserveScroll: true });
+        router.delete(`/medical-certificates/${mc.id}`, { preserveScroll: true });
         setOpen(false);
         setConfirmDelete(false);
     };
@@ -439,22 +443,22 @@ function RowActions({ receipt }: { receipt: Receipt }) {
             {open && (
                 <div className="absolute right-0 top-full mt-1 w-44 rounded-lg bg-[var(--color-bg-secondary)] border border-[var(--color-border)] shadow-lg z-50 py-1">
                     <button
-                        onClick={(e) => handleAction(e, () => router.visit(`/receipts/${receipt.id}`))}
+                        onClick={(e) => handleAction(e, () => router.visit(`/medical-certificates/${mc.id}`))}
                         className="flex items-center gap-2 w-full px-3 py-2 text-sm text-[var(--color-text-primary)] hover:bg-[var(--color-bg-tertiary)] transition-colors"
                     >
                         <EyeIcon className="h-4 w-4" />
                         View
                     </button>
                     <button
-                        onClick={(e) => handleAction(e, () => window.open(`/receipts/${receipt.id}/download`, '_blank'))}
+                        onClick={(e) => handleAction(e, () => window.open(`/medical-certificates/${mc.id}/download`, '_blank'))}
                         className="flex items-center gap-2 w-full px-3 py-2 text-sm text-[var(--color-text-primary)] hover:bg-[var(--color-bg-tertiary)] transition-colors"
                     >
                         <ArrowDownTrayIcon className="h-4 w-4" />
                         Download
                     </button>
-                    {receipt.status !== 'processing' && (
+                    {mc.status !== 'processing' && (
                         <button
-                            onClick={(e) => handleAction(e, () => router.post(`/receipts/${receipt.id}/retry-ai`, {}, { preserveScroll: true }))}
+                            onClick={(e) => handleAction(e, () => router.post(`/medical-certificates/${mc.id}/retry-ai`, {}, { preserveScroll: true }))}
                             className="flex items-center gap-2 w-full px-3 py-2 text-sm text-[var(--color-text-primary)] hover:bg-[var(--color-bg-tertiary)] transition-colors"
                         >
                             <ArrowPathIcon className="h-4 w-4" />
@@ -475,9 +479,9 @@ function RowActions({ receipt }: { receipt: Receipt }) {
     );
 }
 
-function ReceiptThumbnail({ receipt, size = 'sm' }: { receipt: Receipt; size?: 'sm' | 'lg' }) {
+function McThumbnail({ mc, size = 'sm' }: { mc: MedicalCertificate; size?: 'sm' | 'lg' }) {
     const sizeClasses = size === 'lg' ? 'h-16 w-16' : 'h-10 w-10';
-    const url = receipt.thumbnail_url || receipt.image_url;
+    const url = mc.thumbnail_url || mc.image_url;
 
     if (!url) {
         return (
@@ -490,7 +494,7 @@ function ReceiptThumbnail({ receipt, size = 'sm' }: { receipt: Receipt; size?: '
     return (
         <img
             src={url}
-            alt={receipt.merchant_name || 'Receipt'}
+            alt={mc.patient_name || 'Medical Certificate'}
             className={`${sizeClasses} rounded-lg object-cover shrink-0 bg-[var(--color-bg-tertiary)]`}
             loading="lazy"
         />

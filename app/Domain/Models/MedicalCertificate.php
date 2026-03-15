@@ -5,10 +5,9 @@ namespace App\Domain\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
-class Receipt extends Model
+class MedicalCertificate extends Model
 {
     use HasFactory, SoftDeletes;
 
@@ -20,34 +19,34 @@ class Receipt extends Model
         'file_size',
         'mime_type',
         'source',
-        'merchant_name',
-        'total_amount',
-        'currency',
-        'tax_amount',
-        'subtotal_amount',
-        'payment_method',
-        'receipt_number',
-        'purchase_date',
+        'patient_name',
+        'doctor_name',
+        'clinic_name',
+        'diagnosis',
+        'mc_start_date',
+        'mc_end_date',
+        'mc_days',
+        'mc_number',
+        'issue_date',
+        'doctor_reg_number',
+        'notes',
         'ocr_data',
         'ai_confidence_score',
         'ai_raw_response',
         'additional_fields',
-        'metadata',
-        'notes',
         'status',
     ];
 
     protected $casts = [
-        'total_amount' => 'decimal:2',
-        'tax_amount' => 'decimal:2',
-        'subtotal_amount' => 'decimal:2',
-        'ai_confidence_score' => 'decimal:2',
+        'mc_start_date' => 'date',
+        'mc_end_date' => 'date',
+        'issue_date' => 'date',
+        'mc_days' => 'integer',
         'file_size' => 'integer',
-        'purchase_date' => 'date',
+        'ai_confidence_score' => 'decimal:2',
         'ocr_data' => 'array',
         'ai_raw_response' => 'array',
         'additional_fields' => 'array',
-        'metadata' => 'array',
     ];
 
     protected $appends = ['image_url', 'thumbnail_url'];
@@ -55,7 +54,6 @@ class Receipt extends Model
     public function getImageUrlAttribute(): ?string
     {
         if (!$this->image_path) return null;
-        // Add timestamp to bust browser cache after rotation
         return asset('storage/' . $this->image_path) . '?v=' . $this->updated_at?->timestamp;
     }
 
@@ -69,10 +67,5 @@ class Receipt extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
-    }
-
-    public function transactions(): HasMany
-    {
-        return $this->hasMany(Transaction::class);
     }
 }

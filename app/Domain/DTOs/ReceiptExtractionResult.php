@@ -18,6 +18,7 @@ class ReceiptExtractionResult
         public float $confidenceScore = 0.0,
         public array $rawResponse = [],
         public ?string $suggestedLhdnCategory = null,
+        public ?array $metadata = null,
     ) {}
 
     public static function fromAiResponse(array $parsed, array $rawResponse): self
@@ -47,6 +48,7 @@ class ReceiptExtractionResult
             confidenceScore: $fieldsExtracted / $totalFields,
             rawResponse: $rawResponse,
             suggestedLhdnCategory: $parsed['suggested_lhdn_category'] ?? null,
+            metadata: isset($parsed['metadata']) && is_array($parsed['metadata']) ? $parsed['metadata'] : null,
         );
     }
 
@@ -65,6 +67,7 @@ class ReceiptExtractionResult
             'additional_fields' => $this->additionalFields,
             'confidence_score' => $this->confidenceScore,
             'suggested_lhdn_category' => $this->suggestedLhdnCategory,
+            'metadata' => $this->metadata,
         ];
     }
 }

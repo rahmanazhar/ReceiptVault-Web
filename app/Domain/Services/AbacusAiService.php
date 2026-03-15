@@ -2,6 +2,7 @@
 
 namespace App\Domain\Services;
 
+use App\Domain\DTOs\MedicalCertificateExtractionResult;
 use App\Domain\DTOs\ReceiptExtractionResult;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -69,6 +70,137 @@ class AbacusAiService
         $imagick->destroy();
 
         return $jpegContent;
+    }
+
+    public function analyzeMedicalCertificate(string $imagePath): MedicalCertificateExtractionResult
+    {
+        $imageContent = Storage::disk('public')->get($imagePath);
+        if (!$imageContent) {
+            throw new \RuntimeException("Medical certificate image not found: {$imagePath}");
+        }
+
+        $mimeType = Storage::disk('public')->mimeType($imagePath) ?: 'image/jpeg';
+
+        if ($mimeType === 'application/pdf') {
+            $imageContent = $this->convertPdfToImage($imageContent);
+            $mimeType = 'image/jpeg';
+        }
+
+        $base64Image = base64_encode($imageContent);
+
+        $response = $this->callMcChatCompletion($base64Image, $mimeType);
+
+        $parsed = $this->parseResponse($response);
+
+        return MedicalCertificateExtractionResult::fromAiResponse($parsed, $response);
+    }
+
+    private function callMcChatCompletion(string $base64Image, string $mimeType): array
+    {
+        if (empty($this->apiKey)) {
+            Log::warning('Abacus AI not configured - missing API key');
+            return [];
+        }
+
+        $attempt = 0;
+        $lastException = null;
+
+        while ($attempt < $this->maxRetries) {
+            try {
+                $response = Http::withHeaders([
+                    'Authorization' => 'Bearer ' . $this->apiKey,
+                    'Content-Type' => 'application/json',
+                ])
+                ->timeout($this->timeout)
+                ->post($this->baseUrl . '/chat/completions', [
+                    'model' => $this->model,
+                    'messages' => [
+                        [
+                            'role' => 'system',
+                            'content' => 'You are an expert medical document OCR specialist. Analyze medical certificate images and extract structured data. Always return valid JSON.',
+                        ],
+                        [
+                            'role' => 'user',
+                            'content' => [
+                                [
+                                    'type' => 'text',
+                                    'text' => $this->buildMcExtractionPrompt(),
+                                ],
+                                [
+                                    'type' => 'image_url',
+                                    'image_url' => [
+                                        'url' => "data:{$mimeType};base64,{$base64Image}",
+                                    ],
+                                ],
+                            ],
+                        ],
+                    ],
+                    'temperature' => 0.2,
+                    'max_tokens' => 2000,
+                    'stream' => false,
+                ]);
+
+                if ($response->successful()) {
+                    $json = $response->json() ?? [];
+                    Log::info('Abacus AI MC response received', [
+                        'status' => $response->status(),
+                        'model' => $json['model'] ?? 'unknown',
+                        'tokens' => $json['usage']['total_tokens'] ?? 0,
+                    ]);
+                    return $json;
+                }
+
+                Log::warning('Abacus AI MC response error', [
+                    'status' => $response->status(),
+                    'body' => substr($response->body(), 0, 500),
+                    'attempt' => $attempt + 1,
+                ]);
+
+            } catch (\Exception $e) {
+                $lastException = $e;
+                Log::warning("Abacus AI MC attempt " . ($attempt + 1) . " failed: {$e->getMessage()}");
+            }
+
+            $attempt++;
+            if ($attempt < $this->maxRetries) {
+                sleep(min(pow(2, $attempt), 8));
+            }
+        }
+
+        if ($lastException) {
+            throw $lastException;
+        }
+
+        return [];
+    }
+
+    private function buildMcExtractionPrompt(): string
+    {
+        return <<<PROMPT
+Analyze this medical certificate (MC) image and extract the following information. Return a valid JSON object with these fields:
+
+{
+    "patient_name": "Full name of the patient",
+    "doctor_name": "Name of the attending doctor",
+    "clinic_name": "Name of the clinic or hospital",
+    "diagnosis": "Medical condition or reason for MC",
+    "mc_start_date": "YYYY-MM-DD",
+    "mc_end_date": "YYYY-MM-DD",
+    "mc_days": 0,
+    "mc_number": "Certificate or serial number",
+    "issue_date": "YYYY-MM-DD",
+    "doctor_reg_number": "Doctor's registration or license number (e.g., MMC number)",
+    "additional_fields": {}
+}
+
+Rules:
+- Date format must be YYYY-MM-DD
+- mc_days should be an integer representing the total number of days of medical leave
+- If mc_days is not explicitly stated, calculate it from mc_start_date and mc_end_date (inclusive)
+- For doctor_reg_number, look for MMC number, registration number, or license number
+- If a field cannot be determined from the image, set it to null
+- Return ONLY the JSON object, no additional text
+PROMPT;
     }
 
     public function suggestLhdnCategory(array $receiptData): ?string
@@ -181,7 +313,16 @@ Analyze this receipt image and extract the following information. Return a valid
         {"description": "item name", "quantity": 1, "unit_price": 0.00, "total": 0.00}
     ],
     "additional_fields": {},
-    "suggested_lhdn_category": "MEDICAL_SELF|EDUCATION_SELF|LIFESTYLE|LIFESTYLE_SPORT|DOMESTIC_TRAVEL|null"
+    "suggested_lhdn_category": "MEDICAL_SELF|EDUCATION_SELF|LIFESTYLE|LIFESTYLE_SPORT|DOMESTIC_TRAVEL|null",
+    "metadata": {
+        "category": "groceries|dining|transportation|healthcare|education|shopping|utilities|entertainment|travel|services|fuel|other",
+        "description": "Brief 1-sentence summary of what this receipt is for",
+        "is_taxable": true,
+        "tax_type": "SST|GST|service_tax|null",
+        "items": [
+            {"name": "item name", "quantity": 1, "unit_price": 0.00, "total": 0.00}
+        ]
+    }
 }
 
 Rules:
@@ -190,6 +331,11 @@ Rules:
 - Date format must be YYYY-MM-DD
 - For payment_method, use one of: cash, credit_card, debit_card, e_wallet, online_banking
 - For suggested_lhdn_category, suggest the Malaysian LHDN tax relief category if applicable (medical, education, lifestyle, etc.), otherwise null
+- For metadata.category, choose the single most appropriate category from the list based on what is being purchased
+- For metadata.description, write a brief human-readable summary (e.g. "Weekly grocery shopping at Tesco")
+- For metadata.is_taxable, set true if the receipt shows any tax (SST, GST, service tax), false otherwise
+- For metadata.tax_type, specify the type of tax if is_taxable is true, otherwise null
+- For metadata.items, list every individual line item visible on the receipt with name, quantity, unit_price, and total
 - If a field cannot be determined from the image, set it to null
 - Return ONLY the JSON object, no additional text
 PROMPT;

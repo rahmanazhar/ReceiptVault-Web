@@ -21,9 +21,11 @@ interface Props {
     receiptId: number;
     merchantName?: string | null;
     mimeType?: string | null;
+    routePrefix?: string;
+    documentLabel?: string;
 }
 
-export default function ImageViewer({ imageUrl, receiptId, merchantName, mimeType }: Props) {
+export default function ImageViewer({ imageUrl, receiptId, merchantName, mimeType, routePrefix = '/receipts', documentLabel = 'Receipt' }: Props) {
     const isPdf = mimeType === 'application/pdf' || /\.pdf(\?|$)/i.test(imageUrl ?? '');
     const [zoom, setZoom] = useState(1);
     const [rotating, setRotating] = useState(false);
@@ -34,7 +36,7 @@ export default function ImageViewer({ imageUrl, receiptId, merchantName, mimeTyp
 
     const handleRotate = (degrees: number) => {
         setRotating(true);
-        router.post(`/receipts/${receiptId}/rotate`, { degrees }, {
+        router.post(`${routePrefix}/${receiptId}/rotate`, { degrees }, {
             preserveScroll: true,
             onSuccess: () => setRotating(false),
             onError: () => setRotating(false),
@@ -47,7 +49,7 @@ export default function ImageViewer({ imageUrl, receiptId, merchantName, mimeTyp
 
     const handleDownload = () => {
         if (!imageUrl) return;
-        downloadFromUrl(imageUrl, `receipt-${merchantName?.replace(/\s+/g, '_') || receiptId}.jpg`);
+        downloadFromUrl(imageUrl, `${documentLabel.toLowerCase().replace(/\s+/g, '-')}-${merchantName?.replace(/\s+/g, '_') || receiptId}.jpg`);
     };
 
     const handleStartCrop = useCallback(async () => {
@@ -55,7 +57,7 @@ export default function ImageViewer({ imageUrl, receiptId, merchantName, mimeTyp
         // Fetch the current image as a File for the CornerEditor
         const response = await fetch(imageUrl);
         const blob = await response.blob();
-        const file = new File([blob], `receipt-${receiptId}.png`, { type: blob.type });
+        const file = new File([blob], `document-${receiptId}.png`, { type: blob.type });
         setCropFile(file);
         setCropping(true);
     }, [imageUrl, receiptId]);
@@ -63,8 +65,8 @@ export default function ImageViewer({ imageUrl, receiptId, merchantName, mimeTyp
     const handleCropConfirm = (blob: Blob) => {
         // Upload the cropped image to replace the current one
         const formData = new FormData();
-        formData.append('image', blob, `receipt-${receiptId}-cropped.png`);
-        router.post(`/receipts/${receiptId}/recrop`, formData, {
+        formData.append('image', blob, `document-${receiptId}-cropped.png`);
+        router.post(`${routePrefix}/${receiptId}/recrop`, formData, {
             forceFormData: true,
             preserveScroll: true,
             onSuccess: () => { setCropping(false); setCropFile(null); },
@@ -153,14 +155,14 @@ export default function ImageViewer({ imageUrl, receiptId, merchantName, mimeTyp
                     <iframe
                         src={imageUrl}
                         className="w-full h-full"
-                        title="Receipt PDF"
+                        title={`${documentLabel} PDF`}
                     />
                 </div>
             ) : (
                 <div ref={containerRef} className="relative rounded-lg bg-[var(--color-bg-tertiary)] overflow-auto" style={{ maxHeight: '500px' }}>
                     <img
                         src={imageUrl}
-                        alt="Receipt"
+                        alt={documentLabel}
                         className="w-full h-auto object-contain select-none transition-all duration-300"
                         style={{ transform: `scale(${zoom})`, transformOrigin: 'top center', filter: filterStyle }}
                         draggable={false}

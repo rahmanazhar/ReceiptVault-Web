@@ -50,6 +50,7 @@ class ProcessReceiptWithAi implements ShouldQueue
                 'ai_confidence_score' => $result->confidenceScore,
                 'ai_raw_response' => $result->rawResponse,
                 'additional_fields' => !empty($result->additionalFields) ? $result->additionalFields : null,
+                'metadata' => $result->metadata,
                 'status' => 'review_needed',
             ]);
 

@@ -5,6 +5,7 @@ use App\Http\Controllers\Web\Auth\LoginController;
 use App\Http\Controllers\Web\Auth\RegisterController;
 use App\Http\Controllers\Web\DashboardController;
 use App\Http\Controllers\Web\ReceiptWebController;
+use App\Http\Controllers\Web\MedicalCertificateWebController;
 use App\Http\Controllers\Web\TransactionWebController;
 use App\Http\Controllers\Web\TaxController;
 use App\Http\Controllers\Web\SettingsController;
@@ -44,6 +45,18 @@ Route::middleware('auth')->group(function () {
     Route::post('/receipts/{receipt}/recrop', [ReceiptWebController::class, 'recrop'])->name('receipts.recrop');
     Route::post('/receipts/{receipt}/retry-ai', [ReceiptWebController::class, 'retryAi'])->name('receipts.retryAi');
     Route::get('/receipts/{receipt}/download', [ReceiptWebController::class, 'download'])->name('receipts.download');
+
+    // Medical Certificates
+    Route::get('/medical-certificates', [MedicalCertificateWebController::class, 'index'])->name('medical-certificates.index');
+    Route::get('/medical-certificates/create', [MedicalCertificateWebController::class, 'create'])->name('medical-certificates.create');
+    Route::post('/medical-certificates', [MedicalCertificateWebController::class, 'store'])->name('medical-certificates.store');
+    Route::get('/medical-certificates/{medical_certificate}', [MedicalCertificateWebController::class, 'show'])->name('medical-certificates.show');
+    Route::put('/medical-certificates/{medical_certificate}', [MedicalCertificateWebController::class, 'update'])->name('medical-certificates.update');
+    Route::delete('/medical-certificates/{medical_certificate}', [MedicalCertificateWebController::class, 'destroy'])->name('medical-certificates.destroy');
+    Route::post('/medical-certificates/{medical_certificate}/rotate', [MedicalCertificateWebController::class, 'rotate'])->name('medical-certificates.rotate');
+    Route::post('/medical-certificates/{medical_certificate}/recrop', [MedicalCertificateWebController::class, 'recrop'])->name('medical-certificates.recrop');
+    Route::post('/medical-certificates/{medical_certificate}/retry-ai', [MedicalCertificateWebController::class, 'retryAi'])->name('medical-certificates.retryAi');
+    Route::get('/medical-certificates/{medical_certificate}/download', [MedicalCertificateWebController::class, 'download'])->name('medical-certificates.download');
 
     // Transactions
     Route::get('/transactions', [TransactionWebController::class, 'index'])->name('transactions.index');

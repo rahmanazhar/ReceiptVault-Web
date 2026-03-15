@@ -2,6 +2,7 @@ import { Link, usePage } from '@inertiajs/react';
 import {
     HomeIcon,
     DocumentTextIcon,
+    ClipboardDocumentCheckIcon,
     BanknotesIcon,
     CalculatorIcon,
     Cog6ToothIcon,
@@ -17,6 +18,7 @@ import type { PageProps } from '@/types/models';
 const navigation = [
     { name: 'Dashboard', href: '/dashboard', icon: HomeIcon },
     { name: 'Receipts', href: '/receipts', icon: DocumentTextIcon },
+    { name: 'Medical Certs', href: '/medical-certificates', icon: ClipboardDocumentCheckIcon },
     { name: 'Transactions', href: '/transactions', icon: BanknotesIcon },
     { name: 'Tax Tracking', href: '/tax', icon: CalculatorIcon },
     { name: 'Settings', href: '/settings', icon: Cog6ToothIcon },

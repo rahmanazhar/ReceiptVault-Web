@@ -16,8 +16,11 @@ import {
     CheckBadgeIcon,
     ArrowPathIcon,
     TrashIcon,
+    TagIcon,
+    ShieldCheckIcon,
+    ShieldExclamationIcon,
 } from '@heroicons/react/24/outline';
-import type { Receipt, Category, LhdnTaxRelief } from '@/types/models';
+import type { Receipt, Category, LhdnTaxRelief, ReceiptMetadata } from '@/types/models';
 
 interface Props {
     receipt: Receipt;
@@ -250,8 +253,97 @@ export default function ReceiptShow({ receipt, categories, lhdnCategories }: Pro
                             </form>
                         </Card>
                     </div>
+
+                    {/* AI Insights: Category, Tax, and Itemization */}
+                    {receipt.metadata && <MetadataSection metadata={receipt.metadata} currency={receipt.currency} />}
                 </div>
             </AppLayout>
         </>
+    );
+}
+
+const CATEGORY_LABELS: Record<string, string> = {
+    groceries: 'Groceries',
+    dining: 'Dining',
+    transportation: 'Transportation',
+    healthcare: 'Healthcare',
+    education: 'Education',
+    shopping: 'Shopping',
+    utilities: 'Utilities',
+    entertainment: 'Entertainment',
+    travel: 'Travel',
+    services: 'Services',
+    fuel: 'Fuel',
+    other: 'Other',
+};
+
+function MetadataSection({ metadata, currency }: { metadata: ReceiptMetadata; currency: string }) {
+    const items = metadata.items?.filter(i => i.name) ?? [];
+    const hasItems = items.length > 0;
+    const hasSummary = metadata.category || metadata.is_taxable !== null || metadata.description;
+
+    if (!hasSummary && !hasItems) return null;
+
+    return (
+        <Card>
+            <CardTitle>AI Insights</CardTitle>
+
+            {/* Summary row: category, taxable, description */}
+            {hasSummary && (
+                <div className="flex flex-wrap items-center gap-3 mt-3">
+                    {metadata.category && (
+                        <span className="inline-flex items-center gap-1.5 rounded-full bg-[var(--color-accent-subtle)] text-[var(--color-accent)] text-xs font-medium px-2.5 py-1">
+                            <TagIcon className="h-3.5 w-3.5" />
+                            {CATEGORY_LABELS[metadata.category] ?? metadata.category}
+                        </span>
+                    )}
+                    {metadata.is_taxable !== null && (
+                        <span className={`inline-flex items-center gap-1.5 rounded-full text-xs font-medium px-2.5 py-1 ${
+                            metadata.is_taxable
+                                ? 'bg-[var(--color-warning-muted)] text-[var(--color-warning)]'
+                                : 'bg-[var(--color-bg-tertiary)] text-[var(--color-text-muted)]'
+                        }`}>
+                            {metadata.is_taxable
+                                ? <><ShieldExclamationIcon className="h-3.5 w-3.5" /> Taxable{metadata.tax_type ? ` (${metadata.tax_type.replace('_', ' ').toUpperCase()})` : ''}</>
+                                : <><ShieldCheckIcon className="h-3.5 w-3.5" /> Non-taxable</>
+                            }
+                        </span>
+                    )}
+                    {metadata.description && (
+                        <p className="text-sm text-[var(--color-text-secondary)]">{metadata.description}</p>
+                    )}
+                </div>
+            )}
+
+            {/* Itemization table */}
+            {hasItems && (
+                <div className="mt-4 border border-[var(--color-border)] rounded-lg overflow-hidden">
+                    <table className="w-full">
+                        <thead>
+                            <tr className="bg-[var(--color-bg-tertiary)]">
+                                <th className="text-left text-xs font-medium text-[var(--color-text-muted)] uppercase px-4 py-2">Item</th>
+                                <th className="text-center text-xs font-medium text-[var(--color-text-muted)] uppercase px-4 py-2 w-20">Qty</th>
+                                <th className="text-right text-xs font-medium text-[var(--color-text-muted)] uppercase px-4 py-2 w-28">Unit Price</th>
+                                <th className="text-right text-xs font-medium text-[var(--color-text-muted)] uppercase px-4 py-2 w-28">Total</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {items.map((item, i) => (
+                                <tr key={i} className="border-t border-[var(--color-border)]">
+                                    <td className="px-4 py-2 text-sm text-[var(--color-text-primary)]">{item.name}</td>
+                                    <td className="px-4 py-2 text-sm text-center text-[var(--color-text-secondary)]">{item.quantity}</td>
+                                    <td className="px-4 py-2 text-sm text-right text-[var(--color-text-secondary)]">
+                                        {item.unit_price != null ? formatCurrency(String(item.unit_price), currency) : '—'}
+                                    </td>
+                                    <td className="px-4 py-2 text-sm text-right font-medium text-[var(--color-text-primary)]">
+                                        {item.total != null ? formatCurrency(String(item.total), currency) : '—'}
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            )}
+        </Card>
     );
 }

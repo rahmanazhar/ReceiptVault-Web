@@ -13,6 +13,7 @@ class AuthServiceProvider extends ServiceProvider
      * @var array<class-string, class-string>
      */
     protected $policies = [
+        \App\Domain\Models\MedicalCertificate::class => \App\Policies\MedicalCertificatePolicy::class,
         \App\Domain\Models\Receipt::class => \App\Policies\ReceiptPolicy::class,
         \App\Domain\Models\Transaction::class => \App\Policies\TransactionPolicy::class,
         \App\Domain\Models\Category::class => \App\Policies\CategoryPolicy::class,
@@ -37,6 +38,19 @@ class AuthServiceProvider extends ServiceProvider
 
         Gate::define('delete-receipt', function ($user, $receipt) {
             return $user->id === $receipt->user_id;
+        });
+
+        // Define gates for medical certificate access
+        Gate::define('view-medical-certificate', function ($user, $mc) {
+            return $user->id === $mc->user_id;
+        });
+
+        Gate::define('update-medical-certificate', function ($user, $mc) {
+            return $user->id === $mc->user_id;
+        });
+
+        Gate::define('delete-medical-certificate', function ($user, $mc) {
+            return $user->id === $mc->user_id;
         });
 
         // Define gates for transaction access
