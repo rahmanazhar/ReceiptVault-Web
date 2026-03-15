@@ -10,6 +10,8 @@ import {
     ArrowsPointingOutIcon,
     ScissorsIcon,
 } from '@heroicons/react/24/outline';
+import Tooltip from '@/Components/ui/Tooltip';
+import HelpTooltip from '@/Components/ui/HelpTooltip';
 import CornerEditor from './CornerEditor';
 
 type EnhanceMode = 'original' | 'enhanced' | 'scan';
@@ -101,18 +103,18 @@ export default function ImageViewer({ imageUrl, receiptId, merchantName }: Props
     return (
         <div className="space-y-3">
             {/* Toolbar row 1 */}
-            <div className="flex items-center justify-between">
+            <div className="flex flex-wrap items-center justify-between gap-1">
                 <div className="flex items-center gap-1">
-                    <ToolButton icon={<ArrowUturnLeftIcon className="h-4 w-4" />} label="Rotate left" onClick={() => handleRotate(-90)} disabled={rotating} />
-                    <ToolButton icon={<ArrowUturnRightIcon className="h-4 w-4" />} label="Rotate right" onClick={() => handleRotate(90)} disabled={rotating} />
-                    <div className="w-px h-5 bg-[var(--color-border)] mx-1" />
+                    <ToolButton icon={<ArrowUturnLeftIcon className="h-4 w-4" />} label="Rotate left 90°" onClick={() => handleRotate(-90)} disabled={rotating} />
+                    <ToolButton icon={<ArrowUturnRightIcon className="h-4 w-4" />} label="Rotate right 90°" onClick={() => handleRotate(90)} disabled={rotating} />
+                    <div className="w-px h-5 bg-[var(--color-border)] mx-1 hidden sm:block" />
                     <ToolButton icon={<MagnifyingGlassPlusIcon className="h-4 w-4" />} label="Zoom in" onClick={handleZoomIn} />
                     <ToolButton icon={<MagnifyingGlassMinusIcon className="h-4 w-4" />} label="Zoom out" onClick={handleZoomOut} />
                     <ToolButton icon={<ArrowsPointingOutIcon className="h-4 w-4" />} label="Reset zoom" onClick={handleZoomReset} />
-                    <div className="w-px h-5 bg-[var(--color-border)] mx-1" />
+                    <div className="w-px h-5 bg-[var(--color-border)] mx-1 hidden sm:block" />
                     <ToolButton icon={<ScissorsIcon className="h-4 w-4" />} label="Crop & Flatten" onClick={handleStartCrop} accent />
                 </div>
-                <ToolButton icon={<ArrowDownTrayIcon className="h-4 w-4" />} label="Download" onClick={handleDownload} accent />
+                <ToolButton icon={<ArrowDownTrayIcon className="h-4 w-4" />} label="Download image" onClick={handleDownload} accent />
             </div>
 
             {/* Enhancement modes */}
@@ -121,7 +123,7 @@ export default function ImageViewer({ imageUrl, receiptId, merchantName }: Props
                     <button
                         key={mode}
                         onClick={() => setEnhance(mode)}
-                        className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors ${
+                        className={`px-2 py-0.5 sm:px-3 sm:py-1 rounded-lg text-xs font-medium transition-colors ${
                             enhance === mode
                                 ? 'bg-[var(--color-accent)] text-[var(--color-text-inverse)]'
                                 : 'bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]'
@@ -130,6 +132,7 @@ export default function ImageViewer({ imageUrl, receiptId, merchantName }: Props
                         {mode === 'original' ? 'Original' : mode === 'enhanced' ? 'Enhanced' : 'Scan'}
                     </button>
                 ))}
+                <HelpTooltip text="Original: unmodified image. Enhanced: high-contrast B&W for readability. Scan: sharp threshold for OCR." />
             </div>
 
             {/* Image */}
@@ -161,13 +164,15 @@ function ToolButton({ icon, label, onClick, disabled, accent }: {
     icon: React.ReactNode; label: string; onClick: () => void; disabled?: boolean; accent?: boolean;
 }) {
     return (
-        <button onClick={onClick} disabled={disabled} title={label}
-            className={`p-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
-                accent ? 'text-[var(--color-accent)] hover:bg-[var(--color-accent-subtle)]'
-                    : 'text-[var(--color-text-muted)] hover:bg-[var(--color-bg-tertiary)] hover:text-[var(--color-text-primary)]'
-            }`}
-        >
-            {icon}
-        </button>
+        <Tooltip content={label} position="top">
+            <button onClick={onClick} disabled={disabled}
+                className={`p-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+                    accent ? 'text-[var(--color-accent)] hover:bg-[var(--color-accent-subtle)]'
+                        : 'text-[var(--color-text-muted)] hover:bg-[var(--color-bg-tertiary)] hover:text-[var(--color-text-primary)]'
+                }`}
+            >
+                {icon}
+            </button>
+        </Tooltip>
     );
 }

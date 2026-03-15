@@ -1,20 +1,25 @@
 import { cn } from '@/lib/utils';
 import { InputHTMLAttributes, forwardRef } from 'react';
+import HelpTooltip from './HelpTooltip';
 
 interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
     label?: string;
     error?: string;
     hint?: string;
+    helpText?: string;
 }
 
 const Input = forwardRef<HTMLInputElement, InputProps>(
-    ({ className, label, error, hint, id, ...props }, ref) => {
+    ({ className, label, error, hint, helpText, id, ...props }, ref) => {
         return (
             <div className="space-y-1">
                 {label && (
-                    <label htmlFor={id} className="block text-sm font-medium text-[var(--color-text-secondary)]">
-                        {label}
-                    </label>
+                    <div className="flex items-center gap-1.5">
+                        <label htmlFor={id} className="block text-sm font-medium text-[var(--color-text-secondary)]">
+                            {label}
+                        </label>
+                        {helpText && <HelpTooltip text={helpText} />}
+                    </div>
                 )}
                 <input
                     ref={ref}

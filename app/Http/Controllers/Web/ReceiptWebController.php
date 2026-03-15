@@ -19,9 +19,29 @@ class ReceiptWebController extends Controller
 
     public function index(Request $request)
     {
-        $receipts = Receipt::where('user_id', $request->user()->id)
-            ->latest()
-            ->paginate(20);
+        $query = Receipt::where('user_id', $request->user()->id);
+
+        if ($search = $request->input('search')) {
+            $query->where(function ($q) use ($search) {
+                $q->where('merchant_name', 'like', "%{$search}%")
+                  ->orWhere('receipt_number', 'like', "%{$search}%")
+                  ->orWhere('notes', 'like', "%{$search}%");
+            });
+        }
+
+        if ($status = $request->input('status')) {
+            $query->where('status', $status);
+        }
+
+        if ($dateFrom = $request->input('date_from')) {
+            $query->whereDate('purchase_date', '>=', $dateFrom);
+        }
+
+        if ($dateTo = $request->input('date_to')) {
+            $query->whereDate('purchase_date', '<=', $dateTo);
+        }
+
+        $receipts = $query->latest()->paginate(20)->withQueryString();
 
         return Inertia::render('Receipts/Index', [
             'receipts' => $receipts,

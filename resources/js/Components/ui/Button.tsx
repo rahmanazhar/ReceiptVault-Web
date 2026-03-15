@@ -1,14 +1,17 @@
 import { cn } from '@/lib/utils';
 import { ButtonHTMLAttributes, forwardRef } from 'react';
+import Tooltip from './Tooltip';
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
     variant?: 'primary' | 'secondary' | 'danger' | 'ghost';
     size?: 'sm' | 'md' | 'lg';
     loading?: boolean;
+    tooltip?: string;
+    tooltipPosition?: 'top' | 'bottom' | 'left' | 'right';
 }
 
 const Button = forwardRef<HTMLButtonElement, ButtonProps>(
-    ({ className, variant = 'primary', size = 'md', loading, disabled, children, ...props }, ref) => {
+    ({ className, variant = 'primary', size = 'md', loading, disabled, tooltip, tooltipPosition = 'top', children, ...props }, ref) => {
         const variants = {
             primary: 'bg-[var(--color-accent)] text-[var(--color-text-inverse)] hover:bg-[var(--color-accent-hover)] font-semibold',
             secondary: 'bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-hover)] border border-[var(--color-border)]',
@@ -22,7 +25,7 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
             lg: 'px-6 py-3 text-base',
         };
 
-        return (
+        const btn = (
             <button
                 ref={ref}
                 disabled={disabled || loading}
@@ -44,6 +47,12 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
                 {children}
             </button>
         );
+
+        if (tooltip) {
+            return <Tooltip content={tooltip} position={tooltipPosition}>{btn}</Tooltip>;
+        }
+
+        return btn;
     }
 );
 

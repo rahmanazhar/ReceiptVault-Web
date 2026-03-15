@@ -32,7 +32,7 @@ export default function Toast({ message, type = 'success', onClose, duration = 4
     return (
         <div
             className={cn(
-                'fixed top-4 right-4 z-50 flex items-center gap-3 rounded-lg border px-4 py-3 shadow-lg',
+                'fixed top-4 left-4 right-4 sm:left-auto sm:max-w-sm z-50 flex items-center gap-3 rounded-lg border px-4 py-3 shadow-lg',
                 'animate-[slideIn_0.2s_ease-out]',
                 styles[type]
             )}

@@ -1,21 +1,26 @@
 import { cn } from '@/lib/utils';
 import { SelectHTMLAttributes, forwardRef } from 'react';
+import HelpTooltip from './HelpTooltip';
 
 interface SelectProps extends SelectHTMLAttributes<HTMLSelectElement> {
     label?: string;
     error?: string;
     options: { value: string; label: string }[];
     placeholder?: string;
+    helpText?: string;
 }
 
 const Select = forwardRef<HTMLSelectElement, SelectProps>(
-    ({ className, label, error, options, placeholder, id, ...props }, ref) => {
+    ({ className, label, error, options, placeholder, helpText, id, ...props }, ref) => {
         return (
             <div className="space-y-1">
                 {label && (
-                    <label htmlFor={id} className="block text-sm font-medium text-[var(--color-text-secondary)]">
-                        {label}
-                    </label>
+                    <div className="flex items-center gap-1.5">
+                        <label htmlFor={id} className="block text-sm font-medium text-[var(--color-text-secondary)]">
+                            {label}
+                        </label>
+                        {helpText && <HelpTooltip text={helpText} />}
+                    </div>
                 )}
                 <select
                     ref={ref}

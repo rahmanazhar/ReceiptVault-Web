@@ -7,9 +7,16 @@ import Input from '@/Components/ui/Input';
 import Select from '@/Components/ui/Select';
 import Button from '@/Components/ui/Button';
 import Badge from '@/Components/ui/Badge';
+import HelpTooltip from '@/Components/ui/HelpTooltip';
 import ImageViewer from '@/Components/receipt/ImageViewer';
 import { formatCurrency, getConfidenceColor, getConfidenceLabel } from '@/lib/utils';
 import { PAYMENT_METHOD_LABELS } from '@/types/models';
+import {
+    CheckIcon,
+    CheckBadgeIcon,
+    ArrowPathIcon,
+    TrashIcon,
+} from '@heroicons/react/24/outline';
 import type { Receipt, Category, LhdnTaxRelief } from '@/types/models';
 
 interface Props {
@@ -66,7 +73,7 @@ export default function ReceiptShow({ receipt, categories, lhdnCategories }: Pro
                     subtitle={`Receipt #${receipt.id}`}
                 />
 
-                <div className="p-6">
+                <div className="p-4 sm:p-6">
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                         {/* Left: Image viewer with rotate/download/zoom */}
                         <Card>
@@ -74,7 +81,7 @@ export default function ReceiptShow({ receipt, categories, lhdnCategories }: Pro
                                 <CardTitle>Receipt Image</CardTitle>
                                 {confidenceScore !== null && (
                                     <div className="flex items-center gap-2">
-                                        <span className="text-xs text-[var(--color-text-muted)]">AI Confidence:</span>
+                                        <span className="text-xs text-[var(--color-text-muted)] hidden sm:inline">AI Confidence:</span>
                                         <Badge variant={
                                             confidenceScore >= 0.8 ? 'success' :
                                             confidenceScore >= 0.5 ? 'warning' : 'error'
@@ -106,77 +113,100 @@ export default function ReceiptShow({ receipt, categories, lhdnCategories }: Pro
                             </div>
 
                             <form onSubmit={handleSubmit} className="space-y-4">
-                                <Input
-                                    id="merchant_name"
-                                    label="Merchant Name"
-                                    value={data.merchant_name}
-                                    onChange={(e) => setData('merchant_name', e.target.value)}
-                                    error={errors.merchant_name}
-                                    placeholder="e.g. Petronas, Tesco, Clinic ABC"
-                                />
+                                {/* Transaction Info */}
+                                <div className="space-y-4">
+                                    <p className="text-xs uppercase tracking-wider text-[var(--color-text-muted)] font-medium">Transaction Info</p>
+                                    <Input
+                                        id="merchant_name"
+                                        label="Merchant Name"
+                                        helpText="Store or business name on the receipt"
+                                        value={data.merchant_name}
+                                        onChange={(e) => setData('merchant_name', e.target.value)}
+                                        error={errors.merchant_name}
+                                        placeholder="e.g. Petronas, Tesco, Clinic ABC"
+                                    />
 
-                                <div className="grid grid-cols-2 gap-4">
-                                    <Input
-                                        id="total_amount"
-                                        label="Total Amount (RM)"
-                                        type="number"
-                                        step="0.01"
-                                        value={data.total_amount}
-                                        onChange={(e) => setData('total_amount', e.target.value)}
-                                        error={errors.total_amount}
-                                    />
-                                    <Input
-                                        id="tax_amount"
-                                        label="SST / Tax (RM)"
-                                        type="number"
-                                        step="0.01"
-                                        value={data.tax_amount}
-                                        onChange={(e) => setData('tax_amount', e.target.value)}
-                                        error={errors.tax_amount}
-                                    />
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                        <Input
+                                            id="purchase_date"
+                                            label="Purchase Date"
+                                            helpText="Date the purchase was made"
+                                            type="date"
+                                            value={data.purchase_date}
+                                            onChange={(e) => setData('purchase_date', e.target.value)}
+                                            error={errors.purchase_date}
+                                        />
+                                        <Input
+                                            id="receipt_number"
+                                            label="Receipt / Invoice Number"
+                                            helpText="Reference number printed on the receipt"
+                                            value={data.receipt_number}
+                                            onChange={(e) => setData('receipt_number', e.target.value)}
+                                            error={errors.receipt_number}
+                                        />
+                                    </div>
                                 </div>
 
-                                <Input
-                                    id="purchase_date"
-                                    label="Purchase Date"
-                                    type="date"
-                                    value={data.purchase_date}
-                                    onChange={(e) => setData('purchase_date', e.target.value)}
-                                    error={errors.purchase_date}
-                                />
-
-                                <Select
-                                    id="payment_method"
-                                    label="Payment Method"
-                                    value={data.payment_method}
-                                    onChange={(e) => setData('payment_method', e.target.value)}
-                                    options={Object.entries(PAYMENT_METHOD_LABELS).map(([v, l]) => ({ value: v, label: l }))}
-                                    placeholder="Select payment method"
-                                />
-
-                                <Input
-                                    id="receipt_number"
-                                    label="Receipt / Invoice Number"
-                                    value={data.receipt_number}
-                                    onChange={(e) => setData('receipt_number', e.target.value)}
-                                    error={errors.receipt_number}
-                                />
-
-                                <div className="space-y-1">
-                                    <label className="block text-sm font-medium text-[var(--color-text-secondary)]">
-                                        Notes
-                                    </label>
-                                    <textarea
-                                        value={data.notes}
-                                        onChange={(e) => setData('notes', e.target.value)}
-                                        rows={3}
-                                        className="w-full rounded-lg px-3 py-2 text-sm bg-[var(--color-bg-tertiary)] text-[var(--color-text-primary)] border border-[var(--color-border)] placeholder:text-[var(--color-text-muted)] focus:border-[var(--color-border-focus)] focus:outline-none focus:ring-1 focus:ring-[var(--color-accent)] transition-colors duration-150"
-                                        placeholder="Add any notes..."
-                                    />
+                                {/* Amounts */}
+                                <div className="space-y-4 border-t border-[var(--color-border)] pt-4">
+                                    <p className="text-xs uppercase tracking-wider text-[var(--color-text-muted)] font-medium">Amounts</p>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <Input
+                                            id="total_amount"
+                                            label="Total Amount (RM)"
+                                            helpText="Final total including SST/tax"
+                                            type="number"
+                                            step="0.01"
+                                            value={data.total_amount}
+                                            onChange={(e) => setData('total_amount', e.target.value)}
+                                            error={errors.total_amount}
+                                        />
+                                        <Input
+                                            id="tax_amount"
+                                            label="SST / Tax (RM)"
+                                            helpText="Sales and Service Tax amount, if shown"
+                                            type="number"
+                                            step="0.01"
+                                            value={data.tax_amount}
+                                            onChange={(e) => setData('tax_amount', e.target.value)}
+                                            error={errors.tax_amount}
+                                        />
+                                    </div>
                                 </div>
 
-                                <div className="flex flex-wrap gap-3 pt-4 border-t border-[var(--color-border)]">
-                                    <Button type="submit" loading={processing}>
+                                {/* Details */}
+                                <div className="space-y-4 border-t border-[var(--color-border)] pt-4">
+                                    <p className="text-xs uppercase tracking-wider text-[var(--color-text-muted)] font-medium">Details</p>
+                                    <Select
+                                        id="payment_method"
+                                        label="Payment Method"
+                                        helpText="How the purchase was paid"
+                                        value={data.payment_method}
+                                        onChange={(e) => setData('payment_method', e.target.value)}
+                                        options={Object.entries(PAYMENT_METHOD_LABELS).map(([v, l]) => ({ value: v, label: l }))}
+                                        placeholder="Select payment method"
+                                    />
+
+                                    <div className="space-y-1">
+                                        <div className="flex items-center gap-1.5">
+                                            <label className="block text-sm font-medium text-[var(--color-text-secondary)]">
+                                                Notes
+                                            </label>
+                                            <HelpTooltip text="Any additional notes about this receipt" />
+                                        </div>
+                                        <textarea
+                                            value={data.notes}
+                                            onChange={(e) => setData('notes', e.target.value)}
+                                            rows={3}
+                                            className="w-full rounded-lg px-3 py-2 text-sm bg-[var(--color-bg-tertiary)] text-[var(--color-text-primary)] border border-[var(--color-border)] placeholder:text-[var(--color-text-muted)] focus:border-[var(--color-border-focus)] focus:outline-none focus:ring-1 focus:ring-[var(--color-accent)] transition-colors duration-150"
+                                            placeholder="Add any notes..."
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="flex flex-col sm:flex-row sm:flex-wrap gap-3 pt-4 border-t border-[var(--color-border)]">
+                                    <Button type="submit" loading={processing} tooltip="Save your manual edits">
+                                        <CheckIcon className="h-4 w-4 mr-1.5" />
                                         Save Changes
                                     </Button>
                                     {receipt.status === 'review_needed' && (
@@ -185,7 +215,9 @@ export default function ReceiptShow({ receipt, categories, lhdnCategories }: Pro
                                             variant="secondary"
                                             onClick={handleConfirm}
                                             loading={processing}
+                                            tooltip="Mark as verified and complete"
                                         >
+                                            <CheckBadgeIcon className="h-4 w-4 mr-1.5" />
                                             Confirm & Complete
                                         </Button>
                                     )}
@@ -193,7 +225,9 @@ export default function ReceiptShow({ receipt, categories, lhdnCategories }: Pro
                                         type="button"
                                         variant="secondary"
                                         onClick={() => router.post(`/receipts/${receipt.id}/retry-ai`)}
+                                        tooltip="Re-run AI extraction on image"
                                     >
+                                        <ArrowPathIcon className="h-4 w-4 mr-1.5" />
                                         Retry AI
                                     </Button>
                                     <Button
@@ -204,7 +238,9 @@ export default function ReceiptShow({ receipt, categories, lhdnCategories }: Pro
                                                 router.delete(`/receipts/${receipt.id}`);
                                             }
                                         }}
+                                        tooltip="Permanently delete this receipt"
                                     >
+                                        <TrashIcon className="h-4 w-4 mr-1.5" />
                                         Delete
                                     </Button>
                                 </div>

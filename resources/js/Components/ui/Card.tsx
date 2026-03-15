@@ -10,7 +10,7 @@ const Card = forwardRef<HTMLDivElement, CardProps>(
         <div
             ref={ref}
             className={cn(
-                'rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-secondary)] p-6',
+                'rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-secondary)] p-4 sm:p-6',
                 hover && 'transition-colors duration-150 hover:border-[var(--color-border-hover)] hover:bg-[var(--color-bg-tertiary)] cursor-pointer',
                 className
             )}

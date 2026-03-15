@@ -3,8 +3,11 @@ import AppLayout from '@/Layouts/AppLayout';
 import TopBar from '@/Components/navigation/TopBar';
 import { Card, CardTitle, CardDescription } from '@/Components/ui/Card';
 import Button from '@/Components/ui/Button';
+import HelpTooltip from '@/Components/ui/HelpTooltip';
+import Tooltip from '@/Components/ui/Tooltip';
 import TaxReliefWidget from '@/Components/dashboard/TaxReliefWidget';
 import { formatCurrency } from '@/lib/utils';
+import { DocumentTextIcon } from '@heroicons/react/24/outline';
 import type { TaxReliefProgress } from '@/types/models';
 
 interface Props {
@@ -27,26 +30,28 @@ export default function TaxIndex({ year, reliefProgress, totalClaimed, totalLimi
                     subtitle={`Year of Assessment ${year}`}
                 />
 
-                <div className="p-6 space-y-6">
+                <div className="p-4 sm:p-6 space-y-6">
                     {/* Year selector + overview */}
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                        <div className="flex items-center gap-2 flex-wrap">
                             {availableYears.map((y) => (
-                                <button
-                                    key={y}
-                                    onClick={() => router.get('/tax', { year: y }, { preserveState: true })}
-                                    className={`px-3 py-1.5 rounded-lg text-sm transition-colors ${
-                                        y === year
-                                            ? 'bg-[var(--color-accent)] text-[var(--color-text-inverse)] font-medium'
-                                            : 'text-[var(--color-text-muted)] hover:bg-[var(--color-bg-tertiary)]'
-                                    }`}
-                                >
-                                    {y}
-                                </button>
+                                <Tooltip key={y} content={`View tax data for ${y}`} position="bottom">
+                                    <button
+                                        onClick={() => router.get('/tax', { year: y }, { preserveState: true })}
+                                        className={`px-3 py-1.5 rounded-lg text-sm transition-colors ${
+                                            y === year
+                                                ? 'bg-[var(--color-accent)] text-[var(--color-text-inverse)] font-medium'
+                                                : 'text-[var(--color-text-muted)] hover:bg-[var(--color-bg-tertiary)]'
+                                        }`}
+                                    >
+                                        {y}
+                                    </button>
+                                </Tooltip>
                             ))}
                         </div>
                         <Link href={`/tax/report/${year}`}>
-                            <Button variant="secondary" size="sm">
+                            <Button variant="secondary" size="sm" tooltip="View detailed tax report for printing">
+                                <DocumentTextIcon className="h-4 w-4 mr-1.5" />
                                 View Full Report
                             </Button>
                         </Link>
@@ -56,7 +61,10 @@ export default function TaxIndex({ year, reliefProgress, totalClaimed, totalLimi
                     <Card>
                         <div className="flex items-center justify-between mb-4">
                             <div>
-                                <CardTitle>Total Tax Relief Claimed</CardTitle>
+                                <div className="flex items-center gap-2">
+                                    <CardTitle>Total Tax Relief Claimed</CardTitle>
+                                    <HelpTooltip text="Total amount claimed across all LHDN relief categories for this year" />
+                                </div>
                                 <CardDescription>Combined relief across all LHDN categories</CardDescription>
                             </div>
                             <div className="text-right">
@@ -74,12 +82,18 @@ export default function TaxIndex({ year, reliefProgress, totalClaimed, totalLimi
                                 style={{ width: `${Math.min(overallPercentage, 100)}%` }}
                             />
                         </div>
-                        <p className="text-xs text-[var(--color-text-muted)] mt-2">{overallPercentage}% utilized</p>
+                        <div className="flex items-center gap-1 mt-2">
+                            <p className="text-xs text-[var(--color-text-muted)]">{overallPercentage}% utilized</p>
+                            <HelpTooltip text="Percentage of total available tax relief limits used" />
+                        </div>
                     </Card>
 
                     {/* Category breakdown */}
                     <Card>
-                        <CardTitle>Relief Categories</CardTitle>
+                        <div className="flex items-center gap-2">
+                            <CardTitle>Relief Categories</CardTitle>
+                            <HelpTooltip text="Detailed breakdown of claims against each LHDN category" />
+                        </div>
                         <div className="mt-4">
                             <TaxReliefWidget data={reliefProgress} />
                         </div>
