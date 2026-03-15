@@ -24,17 +24,16 @@ export default function ImageViewer({ imageUrl, receiptId, merchantName }: Props
     const containerRef = useRef<HTMLDivElement>(null);
 
     const handleRotate = (degrees: number) => {
-        const newRotation = (rotation + degrees + 360) % 360;
-        setRotation(newRotation);
-
-        // Persist rotation on server
+        // Persist rotation on server - server rotates the actual image file
         setRotating(true);
         router.post(`/receipts/${receiptId}/rotate`, { degrees }, {
-            preserveState: true,
             preserveScroll: true,
-            onFinish: () => setRotating(false),
+            onSuccess: () => {
+                // Server rotated the image, reset CSS rotation
+                setRotation(0);
+                setRotating(false);
+            },
             onError: () => {
-                setRotation(rotation); // Revert on error
                 setRotating(false);
             },
         });
@@ -101,26 +100,24 @@ export default function ImageViewer({ imageUrl, receiptId, merchantName }: Props
                 />
             </div>
 
-            {/* Image container */}
+            {/* Image container - swaps aspect when rotated 90/270 */}
             <div
                 ref={containerRef}
-                className="relative rounded-lg bg-[var(--color-bg-tertiary)] overflow-hidden cursor-grab active:cursor-grabbing"
-                style={{ maxHeight: '550px' }}
+                className="relative rounded-lg bg-[var(--color-bg-tertiary)] overflow-hidden"
             >
-                <div
-                    className="flex items-center justify-center min-h-[200px] transition-transform duration-200"
+                <img
+                    src={imageUrl}
+                    alt="Receipt"
+                    className="w-full h-auto object-contain select-none transition-transform duration-300"
                     style={{
                         transform: `rotate(${rotation}deg) scale(${zoom})`,
-                        transformOrigin: 'center center',
+                        // When rotated 90/270, scale down to fit the swapped dimensions
+                        ...(rotation % 180 !== 0 ? {
+                            maxHeight: '100%',
+                        } : {}),
                     }}
-                >
-                    <img
-                        src={imageUrl}
-                        alt="Receipt"
-                        className="max-w-full max-h-[550px] object-contain select-none"
-                        draggable={false}
-                    />
-                </div>
+                    draggable={false}
+                />
 
                 {/* Zoom indicator */}
                 {zoom !== 1 && (
