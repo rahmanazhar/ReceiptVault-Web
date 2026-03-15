@@ -152,6 +152,11 @@ class ReceiptWebController extends Controller
 
         $fullPath = Storage::disk('public')->path($path);
 
+        // PDFs cannot be rotated with GD
+        if ($receipt->mime_type === 'application/pdf') {
+            return back()->with('error', 'PDF files cannot be rotated.');
+        }
+
         // Use GD to rotate
         $info = getimagesize($fullPath);
         if (!$info) {

@@ -31,14 +31,44 @@ class AbacusAiService
             throw new \RuntimeException("Receipt image not found: {$imagePath}");
         }
 
-        $base64Image = base64_encode($imageContent);
         $mimeType = Storage::disk('public')->mimeType($imagePath) ?: 'image/jpeg';
+
+        // Convert PDF to JPEG for the vision API (which only accepts images)
+        if ($mimeType === 'application/pdf') {
+            $imageContent = $this->convertPdfToImage($imageContent);
+            $mimeType = 'image/jpeg';
+        }
+
+        $base64Image = base64_encode($imageContent);
 
         $response = $this->callChatCompletion($base64Image, $mimeType);
 
         $parsed = $this->parseResponse($response);
 
         return ReceiptExtractionResult::fromAiResponse($parsed, $response);
+    }
+
+    /**
+     * Convert the first page of a PDF to a JPEG image using Imagick.
+     */
+    private function convertPdfToImage(string $pdfContent): string
+    {
+        $imagick = new \Imagick();
+        $imagick->setResolution(200, 200);
+        $imagick->readImageBlob($pdfContent);
+        $imagick->setIteratorIndex(0); // First page only
+        $imagick->setImageFormat('jpeg');
+        $imagick->setImageCompressionQuality(90);
+        // Flatten transparency to white background
+        $imagick->setImageBackgroundColor('white');
+        $imagick->setImageAlphaChannel(\Imagick::ALPHACHANNEL_REMOVE);
+        $imagick = $imagick->mergeImageLayers(\Imagick::LAYERMETHOD_FLATTEN);
+
+        $jpegContent = $imagick->getImageBlob();
+        $imagick->clear();
+        $imagick->destroy();
+
+        return $jpegContent;
     }
 
     public function suggestLhdnCategory(array $receiptData): ?string

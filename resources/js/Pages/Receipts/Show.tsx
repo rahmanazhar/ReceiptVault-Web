@@ -59,7 +59,9 @@ export default function ReceiptShow({ receipt, categories, lhdnCategories }: Pro
     };
 
     const handleConfirm = () => {
-        router.put(`/receipts/${receipt.id}`, { ...data, status: 'completed' });
+        router.put(`/receipts/${receipt.id}`, { ...data, status: 'completed' }, {
+            onSuccess: () => router.visit('/receipts'),
+        });
     };
 
     const confidenceScore = receipt.ai_confidence_score ? parseFloat(receipt.ai_confidence_score) : null;
@@ -95,6 +97,7 @@ export default function ReceiptShow({ receipt, categories, lhdnCategories }: Pro
                                 imageUrl={receipt.image_url ?? null}
                                 receiptId={receipt.id}
                                 merchantName={receipt.merchant_name}
+                                mimeType={receipt.mime_type}
                             />
                         </Card>
 

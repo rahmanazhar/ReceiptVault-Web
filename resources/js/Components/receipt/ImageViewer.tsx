@@ -20,9 +20,11 @@ interface Props {
     imageUrl: string | null;
     receiptId: number;
     merchantName?: string | null;
+    mimeType?: string | null;
 }
 
-export default function ImageViewer({ imageUrl, receiptId, merchantName }: Props) {
+export default function ImageViewer({ imageUrl, receiptId, merchantName, mimeType }: Props) {
+    const isPdf = mimeType === 'application/pdf' || /\.pdf(\?|$)/i.test(imageUrl ?? '');
     const [zoom, setZoom] = useState(1);
     const [rotating, setRotating] = useState(false);
     const [enhance, setEnhance] = useState<EnhanceMode>('original');
@@ -102,60 +104,80 @@ export default function ImageViewer({ imageUrl, receiptId, merchantName }: Props
 
     return (
         <div className="space-y-3">
-            {/* Toolbar row 1 */}
+            {/* Toolbar */}
             <div className="flex flex-wrap items-center justify-between gap-1">
                 <div className="flex items-center gap-1">
-                    <ToolButton icon={<ArrowUturnLeftIcon className="h-4 w-4" />} label="Rotate left 90°" onClick={() => handleRotate(-90)} disabled={rotating} />
-                    <ToolButton icon={<ArrowUturnRightIcon className="h-4 w-4" />} label="Rotate right 90°" onClick={() => handleRotate(90)} disabled={rotating} />
-                    <div className="w-px h-5 bg-[var(--color-border)] mx-1 hidden sm:block" />
-                    <ToolButton icon={<MagnifyingGlassPlusIcon className="h-4 w-4" />} label="Zoom in" onClick={handleZoomIn} />
-                    <ToolButton icon={<MagnifyingGlassMinusIcon className="h-4 w-4" />} label="Zoom out" onClick={handleZoomOut} />
-                    <ToolButton icon={<ArrowsPointingOutIcon className="h-4 w-4" />} label="Reset zoom" onClick={handleZoomReset} />
-                    <div className="w-px h-5 bg-[var(--color-border)] mx-1 hidden sm:block" />
-                    <ToolButton icon={<ScissorsIcon className="h-4 w-4" />} label="Crop & Flatten" onClick={handleStartCrop} accent />
+                    {!isPdf && (
+                        <>
+                            <ToolButton icon={<ArrowUturnLeftIcon className="h-4 w-4" />} label="Rotate left 90°" onClick={() => handleRotate(-90)} disabled={rotating} />
+                            <ToolButton icon={<ArrowUturnRightIcon className="h-4 w-4" />} label="Rotate right 90°" onClick={() => handleRotate(90)} disabled={rotating} />
+                            <div className="w-px h-5 bg-[var(--color-border)] mx-1 hidden sm:block" />
+                        </>
+                    )}
+                    {!isPdf && (
+                        <>
+                            <ToolButton icon={<MagnifyingGlassPlusIcon className="h-4 w-4" />} label="Zoom in" onClick={handleZoomIn} />
+                            <ToolButton icon={<MagnifyingGlassMinusIcon className="h-4 w-4" />} label="Zoom out" onClick={handleZoomOut} />
+                            <ToolButton icon={<ArrowsPointingOutIcon className="h-4 w-4" />} label="Reset zoom" onClick={handleZoomReset} />
+                            <div className="w-px h-5 bg-[var(--color-border)] mx-1 hidden sm:block" />
+                            <ToolButton icon={<ScissorsIcon className="h-4 w-4" />} label="Crop & Flatten" onClick={handleStartCrop} accent />
+                        </>
+                    )}
                 </div>
-                <ToolButton icon={<ArrowDownTrayIcon className="h-4 w-4" />} label="Download image" onClick={handleDownload} accent />
+                <ToolButton icon={<ArrowDownTrayIcon className="h-4 w-4" />} label={isPdf ? "Download PDF" : "Download image"} onClick={handleDownload} accent />
             </div>
 
-            {/* Enhancement modes */}
-            <div className="flex items-center gap-2">
-                {(['original', 'enhanced', 'scan'] as const).map((mode) => (
-                    <button
-                        key={mode}
-                        onClick={() => setEnhance(mode)}
-                        className={`px-2 py-0.5 sm:px-3 sm:py-1 rounded-lg text-xs font-medium transition-colors ${
-                            enhance === mode
-                                ? 'bg-[var(--color-accent)] text-[var(--color-text-inverse)]'
-                                : 'bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]'
-                        }`}
-                    >
-                        {mode === 'original' ? 'Original' : mode === 'enhanced' ? 'Enhanced' : 'Scan'}
-                    </button>
-                ))}
-                <HelpTooltip text="Original: unmodified image. Enhanced: high-contrast B&W for readability. Scan: sharp threshold for OCR." />
-            </div>
+            {/* Enhancement modes (images only) */}
+            {!isPdf && (
+                <div className="flex items-center gap-2">
+                    {(['original', 'enhanced', 'scan'] as const).map((mode) => (
+                        <button
+                            key={mode}
+                            onClick={() => setEnhance(mode)}
+                            className={`px-2 py-0.5 sm:px-3 sm:py-1 rounded-lg text-xs font-medium transition-colors ${
+                                enhance === mode
+                                    ? 'bg-[var(--color-accent)] text-[var(--color-text-inverse)]'
+                                    : 'bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]'
+                            }`}
+                        >
+                            {mode === 'original' ? 'Original' : mode === 'enhanced' ? 'Enhanced' : 'Scan'}
+                        </button>
+                    ))}
+                    <HelpTooltip text="Original: unmodified image. Enhanced: high-contrast B&W for readability. Scan: sharp threshold for OCR." />
+                </div>
+            )}
 
-            {/* Image */}
-            <div ref={containerRef} className="relative rounded-lg bg-[var(--color-bg-tertiary)] overflow-auto" style={{ maxHeight: '500px' }}>
-                <img
-                    src={imageUrl}
-                    alt="Receipt"
-                    className="w-full h-auto object-contain select-none transition-all duration-300"
-                    style={{ transform: `scale(${zoom})`, transformOrigin: 'top center', filter: filterStyle }}
-                    draggable={false}
-                />
-                {zoom !== 1 && (
-                    <div className="absolute bottom-2 left-2 bg-black/60 text-white text-xs px-2 py-1 rounded">{Math.round(zoom * 100)}%</div>
-                )}
-                {rotating && (
-                    <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
-                        <svg className="animate-spin h-6 w-6 text-white" viewBox="0 0 24 24" fill="none">
-                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                        </svg>
-                    </div>
-                )}
-            </div>
+            {/* PDF viewer or Image */}
+            {isPdf ? (
+                <div className="rounded-lg overflow-hidden border border-[var(--color-border)]" style={{ height: '600px' }}>
+                    <iframe
+                        src={imageUrl}
+                        className="w-full h-full"
+                        title="Receipt PDF"
+                    />
+                </div>
+            ) : (
+                <div ref={containerRef} className="relative rounded-lg bg-[var(--color-bg-tertiary)] overflow-auto" style={{ maxHeight: '500px' }}>
+                    <img
+                        src={imageUrl}
+                        alt="Receipt"
+                        className="w-full h-auto object-contain select-none transition-all duration-300"
+                        style={{ transform: `scale(${zoom})`, transformOrigin: 'top center', filter: filterStyle }}
+                        draggable={false}
+                    />
+                    {zoom !== 1 && (
+                        <div className="absolute bottom-2 left-2 bg-black/60 text-white text-xs px-2 py-1 rounded">{Math.round(zoom * 100)}%</div>
+                    )}
+                    {rotating && (
+                        <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
+                            <svg className="animate-spin h-6 w-6 text-white" viewBox="0 0 24 24" fill="none">
+                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                            </svg>
+                        </div>
+                    )}
+                </div>
+            )}
         </div>
     );
 }
