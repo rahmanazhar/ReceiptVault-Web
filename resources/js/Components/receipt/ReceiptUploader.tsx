@@ -4,7 +4,6 @@ import { useDropzone } from 'react-dropzone';
 import { Card } from '@/Components/ui/Card';
 import Button from '@/Components/ui/Button';
 import CameraCapture from './CameraCapture';
-import ImageProcessor from './ImageProcessor';
 import {
     CloudArrowUpIcon,
     CameraIcon,
@@ -13,25 +12,16 @@ import {
 import { cn } from '@/lib/utils';
 
 type Tab = 'upload' | 'camera' | 'scan';
-type Stage = 'select' | 'process' | 'uploading';
+type Stage = 'select' | 'uploading';
 
 export default function ReceiptUploader() {
     const [activeTab, setActiveTab] = useState<Tab>('upload');
-    const [rawFile, setRawFile] = useState<File | null>(null);
     const [stage, setStage] = useState<Stage>('select');
-    const [sourceTab, setSourceTab] = useState<Tab>('upload');
 
     const onDrop = useCallback((acceptedFiles: File[]) => {
         const f = acceptedFiles[0];
         if (f) {
-            setRawFile(f);
-            setSourceTab('upload');
-            // PDFs skip processing, go straight to upload
-            if (f.type === 'application/pdf') {
-                uploadFile(f, 'upload');
-            } else {
-                setStage('process');
-            }
+            uploadFile(f, 'upload');
         }
     }, []);
 
@@ -47,10 +37,9 @@ export default function ReceiptUploader() {
     });
 
     const handleCameraCapture = (blob: Blob) => {
-        const capturedFile = new File([blob], `receipt-${Date.now()}.jpg`, { type: 'image/jpeg' });
-        setRawFile(capturedFile);
-        setSourceTab(activeTab);
-        setStage('process');
+        // jscanify already extracted the paper in CameraCapture - upload directly
+        const source = activeTab === 'camera' ? 'camera' : 'scan';
+        uploadFile(blob, source);
     };
 
     const uploadFile = (file: File | Blob, source: string) => {
@@ -66,19 +55,7 @@ export default function ReceiptUploader() {
         });
     };
 
-    const handleProcessedConfirm = (processedBlob: Blob) => {
-        const source = sourceTab === 'camera' ? 'camera' : sourceTab === 'scan' ? 'scan' : 'upload';
-        uploadFile(processedBlob, source);
-    };
-
-    const handleUseOriginal = () => {
-        if (!rawFile) return;
-        const source = sourceTab === 'camera' ? 'camera' : sourceTab === 'scan' ? 'scan' : 'upload';
-        uploadFile(rawFile, source);
-    };
-
     const clearSelection = () => {
-        setRawFile(null);
         setStage('select');
     };
 
@@ -108,15 +85,6 @@ export default function ReceiptUploader() {
                     </button>
                 ))}
             </div>
-
-            {/* Stage: Processing - auto-enhance before upload */}
-            {stage === 'process' && rawFile && (
-                <ImageProcessor
-                    file={rawFile}
-                    onConfirm={handleProcessedConfirm}
-                    onUseOriginal={handleUseOriginal}
-                />
-            )}
 
             {/* Stage: Uploading */}
             {stage === 'uploading' && (
