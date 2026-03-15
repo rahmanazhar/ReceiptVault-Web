@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Head, useForm, router } from '@inertiajs/react';
 import AppLayout from '@/Layouts/AppLayout';
 import TopBar from '@/Components/navigation/TopBar';
@@ -8,6 +8,7 @@ import Select from '@/Components/ui/Select';
 import Button from '@/Components/ui/Button';
 import Badge from '@/Components/ui/Badge';
 import HelpTooltip from '@/Components/ui/HelpTooltip';
+import Modal from '@/Components/ui/Modal';
 import ImageViewer from '@/Components/receipt/ImageViewer';
 import { formatCurrency, getConfidenceColor, getConfidenceLabel } from '@/lib/utils';
 import { PAYMENT_METHOD_LABELS } from '@/types/models';
@@ -15,7 +16,9 @@ import {
     CheckIcon,
     CheckBadgeIcon,
     ArrowPathIcon,
+    ArrowUturnLeftIcon,
     TrashIcon,
+    ExclamationTriangleIcon,
     TagIcon,
     ShieldCheckIcon,
     ShieldExclamationIcon,
@@ -54,21 +57,39 @@ function getFormValues(receipt: Receipt) {
 
 export default function ReceiptShow({ receipt, categories, lhdnCategories }: Props) {
     const { data, setData, put, processing, errors, reset } = useForm(getFormValues(receipt));
+    const [confirmModal, setConfirmModal] = useState<'complete' | 'retry' | 'delete' | null>(null);
 
     // Update form when receipt data changes (e.g. after Retry AI, rotate, etc.)
     useEffect(() => {
         reset(getFormValues(receipt));
     }, [receipt.id, receipt.merchant_name, receipt.total_amount, receipt.status, receipt.purchase_date]);
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSave = (e: React.FormEvent) => {
         e.preventDefault();
         put(`/receipts/${receipt.id}`);
     };
 
+    const handleSaveAndBack = () => {
+        router.put(`/receipts/${receipt.id}`, data, {
+            onSuccess: () => router.visit('/receipts'),
+        });
+    };
+
     const handleConfirm = () => {
+        setConfirmModal(null);
         router.put(`/receipts/${receipt.id}`, { ...data, status: 'completed' }, {
             onSuccess: () => router.visit('/receipts'),
         });
+    };
+
+    const handleRetryAi = () => {
+        setConfirmModal(null);
+        router.post(`/receipts/${receipt.id}/retry-ai`);
+    };
+
+    const handleDelete = () => {
+        setConfirmModal(null);
+        router.delete(`/receipts/${receipt.id}`);
     };
 
     const confidenceScore = receipt.ai_confidence_score ? parseFloat(receipt.ai_confidence_score) : null;
@@ -122,7 +143,7 @@ export default function ReceiptShow({ receipt, categories, lhdnCategories }: Pro
                                 </Badge>
                             </div>
 
-                            <form onSubmit={handleSubmit} className="space-y-4">
+                            <form onSubmit={handleSave} className="space-y-4">
                                 {/* Transaction Info */}
                                 <div className="space-y-4">
                                     <p className="text-xs uppercase tracking-wider text-[var(--color-text-muted)] font-medium">Transaction Info</p>
@@ -268,39 +289,49 @@ export default function ReceiptShow({ receipt, categories, lhdnCategories }: Pro
                                 </div>
 
                                 <div className="flex flex-col sm:flex-row sm:flex-wrap gap-3 pt-4 border-t border-[var(--color-border)]">
-                                    <Button type="submit" loading={processing} tooltip="Save your manual edits">
-                                        <CheckIcon className="h-4 w-4 mr-1.5" />
-                                        Save Changes
+                                    <Button
+                                        type="button"
+                                        onClick={handleSaveAndBack}
+                                        loading={processing}
+                                        tooltip="Save changes and return to receipts list"
+                                    >
+                                        <ArrowUturnLeftIcon className="h-4 w-4 mr-1.5" />
+                                        Save & Back
                                     </Button>
-                                    {receipt.status === 'review_needed' && (
+                                    <Button
+                                        type="submit"
+                                        variant="secondary"
+                                        loading={processing}
+                                        tooltip="Save your manual edits"
+                                    >
+                                        <CheckIcon className="h-4 w-4 mr-1.5" />
+                                        Save
+                                    </Button>
+                                    {receipt.status !== 'completed' && (
                                         <Button
                                             type="button"
                                             variant="secondary"
-                                            onClick={handleConfirm}
+                                            onClick={() => setConfirmModal('complete')}
                                             loading={processing}
                                             tooltip="Mark as verified and complete"
                                         >
                                             <CheckBadgeIcon className="h-4 w-4 mr-1.5" />
-                                            Confirm & Complete
+                                            Complete
                                         </Button>
                                     )}
                                     <Button
                                         type="button"
                                         variant="secondary"
-                                        onClick={() => router.post(`/receipts/${receipt.id}/retry-ai`)}
+                                        onClick={() => setConfirmModal('retry')}
                                         tooltip="Re-run AI extraction on image"
                                     >
                                         <ArrowPathIcon className="h-4 w-4 mr-1.5" />
-                                        Retry AI
+                                        Regenerate
                                     </Button>
                                     <Button
                                         type="button"
                                         variant="danger"
-                                        onClick={() => {
-                                            if (confirm('Delete this receipt?')) {
-                                                router.delete(`/receipts/${receipt.id}`);
-                                            }
-                                        }}
+                                        onClick={() => setConfirmModal('delete')}
                                         tooltip="Permanently delete this receipt"
                                     >
                                         <TrashIcon className="h-4 w-4 mr-1.5" />
@@ -308,6 +339,63 @@ export default function ReceiptShow({ receipt, categories, lhdnCategories }: Pro
                                     </Button>
                                 </div>
                             </form>
+
+                            {/* Confirm Complete Modal */}
+                            <Modal open={confirmModal === 'complete'} onClose={() => setConfirmModal(null)} title="Confirm & Complete" size="sm">
+                                <div className="flex items-start gap-3 mb-4">
+                                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--color-accent-subtle)] flex-shrink-0">
+                                        <CheckBadgeIcon className="h-5 w-5 text-[var(--color-accent)]" />
+                                    </div>
+                                    <p className="text-sm text-[var(--color-text-secondary)]">
+                                        This will mark the receipt as verified and complete. The current form data will be saved.
+                                    </p>
+                                </div>
+                                <div className="flex justify-end gap-3">
+                                    <Button variant="secondary" size="sm" onClick={() => setConfirmModal(null)}>Cancel</Button>
+                                    <Button size="sm" onClick={handleConfirm}>
+                                        <CheckBadgeIcon className="h-4 w-4 mr-1.5" />
+                                        Complete
+                                    </Button>
+                                </div>
+                            </Modal>
+
+                            {/* Confirm Retry AI Modal */}
+                            <Modal open={confirmModal === 'retry'} onClose={() => setConfirmModal(null)} title="Retry AI Processing" size="sm">
+                                <div className="flex items-start gap-3 mb-4">
+                                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--color-warning-muted)] flex-shrink-0">
+                                        <ExclamationTriangleIcon className="h-5 w-5 text-[var(--color-warning)]" />
+                                    </div>
+                                    <p className="text-sm text-[var(--color-text-secondary)]">
+                                        This will re-run AI extraction on the receipt image. Any unsaved manual edits will be overwritten with the new AI results.
+                                    </p>
+                                </div>
+                                <div className="flex justify-end gap-3">
+                                    <Button variant="secondary" size="sm" onClick={() => setConfirmModal(null)}>Cancel</Button>
+                                    <Button size="sm" onClick={handleRetryAi}>
+                                        <ArrowPathIcon className="h-4 w-4 mr-1.5" />
+                                        Retry AI
+                                    </Button>
+                                </div>
+                            </Modal>
+
+                            {/* Confirm Delete Modal */}
+                            <Modal open={confirmModal === 'delete'} onClose={() => setConfirmModal(null)} title="Delete Receipt" size="sm">
+                                <div className="flex items-start gap-3 mb-4">
+                                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--color-error-muted)] flex-shrink-0">
+                                        <ExclamationTriangleIcon className="h-5 w-5 text-[var(--color-error)]" />
+                                    </div>
+                                    <p className="text-sm text-[var(--color-text-secondary)]">
+                                        This will permanently delete this receipt and its associated transactions. This action cannot be undone.
+                                    </p>
+                                </div>
+                                <div className="flex justify-end gap-3">
+                                    <Button variant="secondary" size="sm" onClick={() => setConfirmModal(null)}>Cancel</Button>
+                                    <Button variant="danger" size="sm" onClick={handleDelete}>
+                                        <TrashIcon className="h-4 w-4 mr-1.5" />
+                                        Delete
+                                    </Button>
+                                </div>
+                            </Modal>
                         </Card>
                     </div>
 
