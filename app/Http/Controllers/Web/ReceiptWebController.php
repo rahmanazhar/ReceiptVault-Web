@@ -178,6 +178,9 @@ class ReceiptWebController extends Controller
         };
         imagedestroy($rotated);
 
+        // Touch updated_at to bust browser cache
+        $receipt->touch();
+
         return back()->with('success', 'Image rotated.');
     }
 

@@ -120,7 +120,8 @@ export default function ImageViewer({ imageUrl, receiptId, merchantName }: Props
             {/* Image */}
             <div
                 ref={containerRef}
-                className="relative rounded-lg bg-[var(--color-bg-tertiary)] overflow-hidden"
+                className="relative rounded-lg bg-[var(--color-bg-tertiary)] overflow-auto"
+                style={{ maxHeight: '500px' }}
             >
                 <img
                     src={imageUrl}
@@ -128,6 +129,7 @@ export default function ImageViewer({ imageUrl, receiptId, merchantName }: Props
                     className="w-full h-auto object-contain select-none transition-all duration-300"
                     style={{
                         transform: `scale(${zoom})`,
+                        transformOrigin: 'top center',
                         filter: filterStyle,
                     }}
                     draggable={false}

@@ -52,7 +52,9 @@ class Receipt extends Model
 
     public function getImageUrlAttribute(): ?string
     {
-        return $this->image_path ? asset('storage/' . $this->image_path) : null;
+        if (!$this->image_path) return null;
+        // Add timestamp to bust browser cache after rotation
+        return asset('storage/' . $this->image_path) . '?v=' . $this->updated_at?->timestamp;
     }
 
     public function getThumbnailUrlAttribute(): ?string
