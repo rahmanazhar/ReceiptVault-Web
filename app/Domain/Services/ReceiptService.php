@@ -41,8 +41,8 @@ class ReceiptService
             'total_amount' => 0,
         ]);
 
-        // Dispatch AI processing job
-        ProcessReceiptWithAi::dispatch($receipt->id);
+        // Run AI processing immediately (synchronous)
+        ProcessReceiptWithAi::dispatchSync($receipt->id);
 
         return $receipt;
     }

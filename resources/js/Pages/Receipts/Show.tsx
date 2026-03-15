@@ -160,7 +160,7 @@ export default function ReceiptShow({ receipt, categories, lhdnCategories }: Pro
                                     />
                                 </div>
 
-                                <div className="flex gap-3 pt-4 border-t border-[var(--color-border)]">
+                                <div className="flex flex-wrap gap-3 pt-4 border-t border-[var(--color-border)]">
                                     <Button type="submit" loading={processing}>
                                         Save Changes
                                     </Button>
@@ -174,6 +174,13 @@ export default function ReceiptShow({ receipt, categories, lhdnCategories }: Pro
                                             Confirm & Complete
                                         </Button>
                                     )}
+                                    <Button
+                                        type="button"
+                                        variant="secondary"
+                                        onClick={() => router.post(`/receipts/${receipt.id}/retry-ai`)}
+                                    >
+                                        Retry AI
+                                    </Button>
                                     <Button
                                         type="button"
                                         variant="danger"

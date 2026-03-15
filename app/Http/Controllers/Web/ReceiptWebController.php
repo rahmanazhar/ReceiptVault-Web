@@ -229,4 +229,16 @@ class ReceiptWebController extends Controller
 
         return back()->with('success', 'Receipt image updated.');
     }
+
+    public function retryAi(Request $request, Receipt $receipt)
+    {
+        if ($receipt->user_id !== $request->user()->id) {
+            abort(403);
+        }
+
+        // Run AI processing synchronously
+        \App\Jobs\ProcessReceiptWithAi::dispatchSync($receipt->id);
+
+        return back()->with('success', 'AI processing completed.');
+    }
 }

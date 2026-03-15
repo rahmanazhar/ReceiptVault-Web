@@ -42,6 +42,7 @@ Route::middleware('auth')->group(function () {
     Route::delete('/receipts/{receipt}', [ReceiptWebController::class, 'destroy'])->name('receipts.destroy');
     Route::post('/receipts/{receipt}/rotate', [ReceiptWebController::class, 'rotate'])->name('receipts.rotate');
     Route::post('/receipts/{receipt}/recrop', [ReceiptWebController::class, 'recrop'])->name('receipts.recrop');
+    Route::post('/receipts/{receipt}/retry-ai', [ReceiptWebController::class, 'retryAi'])->name('receipts.retryAi');
     Route::get('/receipts/{receipt}/download', [ReceiptWebController::class, 'download'])->name('receipts.download');
 
     // Transactions
