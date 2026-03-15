@@ -40,6 +40,8 @@ Route::middleware('auth')->group(function () {
     Route::get('/receipts/{receipt}', [ReceiptWebController::class, 'show'])->name('receipts.show');
     Route::put('/receipts/{receipt}', [ReceiptWebController::class, 'update'])->name('receipts.update');
     Route::delete('/receipts/{receipt}', [ReceiptWebController::class, 'destroy'])->name('receipts.destroy');
+    Route::post('/receipts/{receipt}/rotate', [ReceiptWebController::class, 'rotate'])->name('receipts.rotate');
+    Route::get('/receipts/{receipt}/download', [ReceiptWebController::class, 'download'])->name('receipts.download');
 
     // Transactions
     Route::get('/transactions', [TransactionWebController::class, 'index'])->name('transactions.index');

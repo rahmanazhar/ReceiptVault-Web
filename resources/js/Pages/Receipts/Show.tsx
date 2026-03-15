@@ -6,6 +6,7 @@ import Input from '@/Components/ui/Input';
 import Select from '@/Components/ui/Select';
 import Button from '@/Components/ui/Button';
 import Badge from '@/Components/ui/Badge';
+import ImageViewer from '@/Components/receipt/ImageViewer';
 import { formatCurrency, getConfidenceColor, getConfidenceLabel } from '@/lib/utils';
 import { PAYMENT_METHOD_LABELS } from '@/types/models';
 import type { Receipt, Category, LhdnTaxRelief } from '@/types/models';
@@ -52,7 +53,7 @@ export default function ReceiptShow({ receipt, categories, lhdnCategories }: Pro
 
                 <div className="p-6">
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                        {/* Left: Image viewer */}
+                        {/* Left: Image viewer with rotate/download/zoom */}
                         <Card>
                             <div className="flex items-center justify-between mb-4">
                                 <CardTitle>Receipt Image</CardTitle>
@@ -68,19 +69,11 @@ export default function ReceiptShow({ receipt, categories, lhdnCategories }: Pro
                                     </div>
                                 )}
                             </div>
-                            <div className="relative rounded-lg bg-[var(--color-bg-tertiary)] overflow-hidden">
-                                {receipt.image_url ? (
-                                    <img
-                                        src={receipt.image_url}
-                                        alt="Receipt"
-                                        className="w-full h-auto max-h-[600px] object-contain"
-                                    />
-                                ) : (
-                                    <div className="flex items-center justify-center h-64 text-[var(--color-text-muted)]">
-                                        No image available
-                                    </div>
-                                )}
-                            </div>
+                            <ImageViewer
+                                imageUrl={receipt.image_url ?? null}
+                                receiptId={receipt.id}
+                                merchantName={receipt.merchant_name}
+                            />
                         </Card>
 
                         {/* Right: Edit form */}

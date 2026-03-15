@@ -8,6 +8,7 @@ use App\Domain\Models\Category;
 use App\Domain\Models\LhdnTaxRelief;
 use App\Domain\Services\ReceiptService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 
 class ReceiptWebController extends Controller
@@ -110,5 +111,77 @@ class ReceiptWebController extends Controller
 
         return redirect('/receipts')
             ->with('success', 'Receipt deleted.');
+    }
+
+    public function rotate(Request $request, Receipt $receipt)
+    {
+        if ($receipt->user_id !== $request->user()->id) {
+            abort(403);
+        }
+
+        $request->validate([
+            'degrees' => ['required', 'integer', 'in:-90,90,180,270,-270'],
+        ]);
+
+        $degrees = (int) $request->degrees;
+        $path = $receipt->image_path;
+
+        if (!$path || !Storage::disk('public')->exists($path)) {
+            return back()->with('error', 'Image not found.');
+        }
+
+        $fullPath = Storage::disk('public')->path($path);
+
+        // Use GD to rotate
+        $info = getimagesize($fullPath);
+        if (!$info) {
+            return back()->with('error', 'Invalid image.');
+        }
+
+        $mime = $info['mime'];
+        $image = match ($mime) {
+            'image/jpeg' => imagecreatefromjpeg($fullPath),
+            'image/png' => imagecreatefrompng($fullPath),
+            default => null,
+        };
+
+        if (!$image) {
+            return back()->with('error', 'Unsupported image format for rotation.');
+        }
+
+        // GD rotates counter-clockwise, so negate for clockwise
+        $rotated = imagerotate($image, -$degrees, 0);
+        imagedestroy($image);
+
+        if (!$rotated) {
+            return back()->with('error', 'Rotation failed.');
+        }
+
+        match ($mime) {
+            'image/jpeg' => imagejpeg($rotated, $fullPath, 92),
+            'image/png' => imagepng($rotated, $fullPath),
+            default => null,
+        };
+        imagedestroy($rotated);
+
+        return back()->with('success', 'Image rotated.');
+    }
+
+    public function download(Request $request, Receipt $receipt)
+    {
+        if ($receipt->user_id !== $request->user()->id) {
+            abort(403);
+        }
+
+        $path = $receipt->image_path;
+
+        if (!$path || !Storage::disk('public')->exists($path)) {
+            abort(404, 'Image not found.');
+        }
+
+        $filename = $receipt->original_filename
+            ?? ('receipt-' . $receipt->id . '.' . pathinfo($path, PATHINFO_EXTENSION));
+
+        return Storage::disk('public')->download($path, $filename);
     }
 }
