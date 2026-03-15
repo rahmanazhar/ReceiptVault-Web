@@ -46,7 +46,12 @@ class DashboardController extends Controller
             ->selectRaw('SUM(CASE WHEN is_tax_deductible = 1 THEN amount ELSE 0 END) as tax_deductible')
             ->groupBy('month')
             ->orderBy('month')
-            ->get();
+            ->get()
+            ->map(fn ($item) => [
+                'month' => $item->month,
+                'total' => (float) $item->total,
+                'tax_deductible' => (float) $item->tax_deductible,
+            ]);
 
         // Category distribution
         $categoryDistribution = Transaction::where('transactions.user_id', $userId)
@@ -58,7 +63,13 @@ class DashboardController extends Controller
             ->groupBy('categories.id', 'categories.name', 'categories.color')
             ->orderByDesc('total')
             ->limit(8)
-            ->get();
+            ->get()
+            ->map(fn ($item) => [
+                'name' => $item->name,
+                'color' => $item->color,
+                'total' => (float) $item->total,
+                'count' => (int) $item->count,
+            ]);
 
         // LHDN tax relief progress - show all top-level categories
         $lhdnCategories = LhdnTaxRelief::where('tax_year', $currentYear)

@@ -42,7 +42,7 @@ class ReceiptWebController extends Controller
             $query->whereDate('purchase_date', '<=', $dateTo);
         }
 
-        $receipts = $query->latest()->paginate(20)->withQueryString();
+        $receipts = $query->latest('purchase_date')->latest('created_at')->paginate(20)->withQueryString();
 
         return Inertia::render('Receipts/Index', [
             'receipts' => $receipts,

@@ -462,8 +462,8 @@ function MetadataSection({ metadata, currency }: { metadata: ReceiptMetadata; cu
 
             {/* Itemization table */}
             {hasItems && (
-                <div className="mt-4 border border-[var(--color-border)] rounded-lg overflow-hidden">
-                    <table className="w-full">
+                <div className="mt-4 border border-[var(--color-border)] rounded-lg overflow-x-auto">
+                    <table className="w-full min-w-[400px]">
                         <thead>
                             <tr className="bg-[var(--color-bg-tertiary)]">
                                 <th className="text-left text-xs font-medium text-[var(--color-text-muted)] uppercase px-4 py-2">Item</th>
