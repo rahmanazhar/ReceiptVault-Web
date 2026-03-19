@@ -31,7 +31,7 @@ export interface Receipt {
     ocr_data: Record<string, unknown> | null;
     ai_confidence_score: string | null;
     ai_raw_response: Record<string, unknown> | null;
-    additional_fields: Record<string, string> | null;
+    additional_fields: Record<string, unknown> | null;
     metadata: ReceiptMetadata | null;
     notes: string | null;
     status: 'pending' | 'processing' | 'review_needed' | 'completed' | 'failed';

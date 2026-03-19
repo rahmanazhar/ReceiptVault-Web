@@ -19,6 +19,7 @@ class ReceiptExtractionResult
         public array $rawResponse = [],
         public ?string $suggestedLhdnCategory = null,
         public ?array $metadata = null,
+        public ?array $currencyConversion = null,
     ) {}
 
     public static function fromAiResponse(array $parsed, array $rawResponse): self
@@ -34,11 +35,34 @@ class ReceiptExtractionResult
         if (!empty($parsed['payment_method'])) $fieldsExtracted++;
         if (!empty($parsed['subtotal_amount'])) $fieldsExtracted++;
 
+        $currencyConversion = null;
+        if (isset($parsed['currency_conversion']) && is_array($parsed['currency_conversion'])) {
+            $currencyConversion = $parsed['currency_conversion'];
+        }
+
+        $totalAmount = isset($parsed['total_amount']) ? (float) $parsed['total_amount'] : null;
+        $taxAmount = isset($parsed['tax_amount']) ? (float) $parsed['tax_amount'] : null;
+        $subtotalAmount = isset($parsed['subtotal_amount']) ? (float) $parsed['subtotal_amount'] : null;
+
+        // Safety net: if AI detected a foreign currency but forgot to convert the amounts,
+        // apply the conversion ourselves using the exchange rate it provided.
+        if ($currencyConversion && !empty($currencyConversion['exchange_rate'])) {
+            $rate = (float) $currencyConversion['exchange_rate'];
+            $origTotal = (float) ($currencyConversion['original_total_amount'] ?? 0);
+
+            // If total_amount matches the original amount, the AI didn't convert — do it here
+            if ($totalAmount && $origTotal > 0 && abs($totalAmount - $origTotal) < 0.02) {
+                $totalAmount = round($totalAmount * $rate, 2);
+                $taxAmount = $taxAmount ? round($taxAmount * $rate, 2) : null;
+                $subtotalAmount = $subtotalAmount ? round($subtotalAmount * $rate, 2) : null;
+            }
+        }
+
         return new self(
             merchantName: $parsed['merchant_name'] ?? null,
-            totalAmount: isset($parsed['total_amount']) ? (float) $parsed['total_amount'] : null,
-            taxAmount: isset($parsed['tax_amount']) ? (float) $parsed['tax_amount'] : null,
-            subtotalAmount: isset($parsed['subtotal_amount']) ? (float) $parsed['subtotal_amount'] : null,
+            totalAmount: $totalAmount,
+            taxAmount: $taxAmount,
+            subtotalAmount: $subtotalAmount,
             currency: $parsed['currency'] ?? 'MYR',
             purchaseDate: $parsed['purchase_date'] ?? null,
             receiptNumber: $parsed['receipt_number'] ?? null,
@@ -49,6 +73,7 @@ class ReceiptExtractionResult
             rawResponse: $rawResponse,
             suggestedLhdnCategory: $parsed['suggested_lhdn_category'] ?? null,
             metadata: isset($parsed['metadata']) && is_array($parsed['metadata']) ? $parsed['metadata'] : null,
+            currencyConversion: $currencyConversion,
         );
     }
 
@@ -68,6 +93,7 @@ class ReceiptExtractionResult
             'confidence_score' => $this->confidenceScore,
             'suggested_lhdn_category' => $this->suggestedLhdnCategory,
             'metadata' => $this->metadata,
+            'currency_conversion' => $this->currencyConversion,
         ];
     }
 }

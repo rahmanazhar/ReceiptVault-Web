@@ -453,12 +453,31 @@ Analyze this receipt image and extract the following information. Return a valid
         "items": [
             {"name": "item name", "quantity": 1, "unit_price": 0.00, "total": 0.00}
         ]
-    }
+    },
+    "currency_conversion": null
 }
 
 Rules:
 - All monetary amounts should be numbers (not strings)
-- If currency is not visible, assume MYR (Malaysian Ringgit)
+- IMPORTANT — Currency detection and conversion:
+  - Carefully detect the actual currency shown on the receipt (look for currency symbols like $, €, £, ¥, RM, or currency codes like USD, AUD, SGD, EUR, GBP, etc.)
+  - Look at contextual clues: country of the merchant, GST vs SST, ABN numbers (Australia), dollar signs with decimals, etc.
+  - If the receipt currency is NOT MYR (Malaysian Ringgit):
+    1. Set "currency" to "MYR"
+    2. Convert total_amount, tax_amount, subtotal_amount, and all line_items prices to MYR using approximate exchange rates
+    3. Set "currency_conversion" to an object with:
+       {
+           "original_currency": "USD",
+           "original_currency_symbol": "$",
+           "original_total_amount": 55.75,
+           "original_tax_amount": 5.06,
+           "original_subtotal_amount": 50.69,
+           "exchange_rate": 4.47,
+           "rate_note": "Approximate rate as of receipt date"
+       }
+  - If the receipt currency IS MYR, set "currency_conversion" to null
+  - Use these approximate MYR exchange rates: USD=4.47, AUD=2.90, SGD=3.35, EUR=4.85, GBP=5.65, JPY=0.030, THB=0.13, IDR=0.00028, CNY=0.62, INR=0.053, KRW=0.0033, TWD=0.14, HKD=0.57, PHP=0.078, VND=0.00018, NZD=2.65, CAD=3.25, CHF=5.10, GBP=5.65
+- If currency is not visible and there are no contextual clues, assume MYR (Malaysian Ringgit)
 - Date format must be YYYY-MM-DD
 - For payment_method, use one of: cash, credit_card, debit_card, e_wallet, online_banking
 - For suggested_lhdn_category, suggest the Malaysian LHDN tax relief category if applicable (medical, education, lifestyle, etc.), otherwise null
@@ -466,7 +485,7 @@ Rules:
 - For metadata.description, write a brief human-readable summary (e.g. "Weekly grocery shopping at Tesco")
 - For metadata.is_taxable, set true if the receipt shows any tax (SST, GST, service tax), false otherwise
 - For metadata.tax_type, specify the type of tax if is_taxable is true, otherwise null
-- For metadata.items, list every individual line item visible on the receipt with name, quantity, unit_price, and total
+- For metadata.items, list every individual line item visible on the receipt with name, quantity, unit_price, and total (in MYR if converted)
 - If a field cannot be determined from the image, set it to null
 - Return ONLY the JSON object, no additional text
 PROMPT;

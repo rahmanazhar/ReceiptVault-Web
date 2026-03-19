@@ -22,6 +22,7 @@ import {
     TagIcon,
     ShieldCheckIcon,
     ShieldExclamationIcon,
+    CurrencyDollarIcon,
 } from '@heroicons/react/24/outline';
 import type { Receipt, Category, LhdnTaxRelief, ReceiptMetadata } from '@/types/models';
 
@@ -204,6 +205,9 @@ export default function ReceiptShow({ receipt, categories, lhdnCategories }: Pro
                                         />
                                     </div>
                                 </div>
+
+                                {/* Currency Conversion Info */}
+                                <CurrencyConversionBanner additionalFields={receipt.additional_fields} />
 
                                 {/* Tax Relief */}
                                 <div className="space-y-4 border-t border-[var(--color-border)] pt-4">
@@ -421,6 +425,42 @@ const CATEGORY_LABELS: Record<string, string> = {
     fuel: 'Fuel',
     other: 'Other',
 };
+
+interface CurrencyConversion {
+    original_currency: string;
+    original_currency_symbol: string;
+    original_total_amount: number;
+    original_tax_amount: number | null;
+    original_subtotal_amount: number | null;
+    exchange_rate: number;
+    rate_note: string;
+}
+
+function CurrencyConversionBanner({ additionalFields }: { additionalFields: Record<string, unknown> | null }) {
+    const conversion = additionalFields?.currency_conversion as CurrencyConversion | undefined;
+    if (!conversion?.original_currency) return null;
+
+    return (
+        <div className="border-t border-[var(--color-border)] pt-4">
+            <div className="flex items-start gap-3 rounded-lg bg-[var(--color-accent-subtle)] border border-[var(--color-accent)]/20 px-4 py-3">
+                <CurrencyDollarIcon className="h-5 w-5 text-[var(--color-accent)] mt-0.5 flex-shrink-0" />
+                <div className="text-sm space-y-1">
+                    <p className="font-medium text-[var(--color-text-primary)]">
+                        Converted from {conversion.original_currency}
+                    </p>
+                    <p className="text-[var(--color-text-secondary)]">
+                        Original total: {conversion.original_currency_symbol}{conversion.original_total_amount.toFixed(2)} {conversion.original_currency}
+                        {' '}&middot;{' '}
+                        Rate: 1 {conversion.original_currency} = RM {conversion.exchange_rate.toFixed(2)}
+                    </p>
+                    <p className="text-xs text-[var(--color-text-muted)]">
+                        {conversion.rate_note}. You can adjust the RM amounts above if needed.
+                    </p>
+                </div>
+            </div>
+        </div>
+    );
+}
 
 function MetadataSection({ metadata, currency }: { metadata: ReceiptMetadata; currency: string }) {
     const items = metadata.items?.filter(i => i.name) ?? [];

@@ -37,6 +37,12 @@ class ProcessReceiptWithAi implements ShouldQueue
         try {
             $result = $aiService->analyzeReceipt($receipt->image_path);
 
+            // Merge currency conversion info into additional_fields
+            $additionalFields = !empty($result->additionalFields) ? $result->additionalFields : [];
+            if (!empty($result->currencyConversion)) {
+                $additionalFields['currency_conversion'] = $result->currencyConversion;
+            }
+
             // Update receipt with extracted data
             $receipt->update([
                 'merchant_name' => $result->merchantName ?? $receipt->merchant_name,
@@ -50,7 +56,7 @@ class ProcessReceiptWithAi implements ShouldQueue
                 'ocr_data' => $result->toArray(),
                 'ai_confidence_score' => $result->confidenceScore,
                 'ai_raw_response' => $result->rawResponse,
-                'additional_fields' => !empty($result->additionalFields) ? $result->additionalFields : null,
+                'additional_fields' => !empty($additionalFields) ? $additionalFields : null,
                 'metadata' => $result->metadata,
                 'status' => 'review_needed',
             ]);
