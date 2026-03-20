@@ -125,13 +125,17 @@ class ReceiptWebController extends Controller
 
         $receipt->update($validated);
 
-        // Sync tax relief fields to the associated transaction
+        // Sync receipt fields to the associated transaction
         $transaction = Transaction::where('receipt_id', $receipt->id)->first();
         if ($transaction) {
             $transaction->update([
+                'description' => $receipt->merchant_name ?? $transaction->description,
+                'amount' => $receipt->total_amount ?? $transaction->amount,
+                'currency' => $receipt->currency ?? $transaction->currency,
+                'transaction_date' => $receipt->purchase_date ?? $transaction->transaction_date,
                 'is_tax_deductible' => $isTaxDeductible,
                 'lhdn_category_code' => $lhdnCategoryCode,
-                'tax_relief_amount' => $isTaxDeductible && $lhdnCategoryCode ? $transaction->amount : null,
+                'tax_relief_amount' => $isTaxDeductible && $lhdnCategoryCode ? ($receipt->total_amount ?? $transaction->amount) : null,
                 'tax_year' => $receipt->purchase_date
                     ? (int) date('Y', strtotime($receipt->purchase_date))
                     : (int) date('Y'),
