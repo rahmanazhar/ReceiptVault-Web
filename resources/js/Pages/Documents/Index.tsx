@@ -63,7 +63,8 @@ const TYPE_VARIANT: Record<string, 'default' | 'info' | 'warning' | 'success' | 
     other: 'default',
 };
 
-export default function DocumentsIndex({ documents, filters, sorting }: Props) {
+export default function DocumentsIndex({ documents, filters, sorting: sortingProp }: Props) {
+    const sorting = sortingProp ?? { sort_by: 'created_at', sort_dir: 'desc' as const };
     const [search, setSearch] = useState(filters.search || '');
     const [showFilters, setShowFilters] = useState(
         !!(filters.status || filters.document_type || filters.date_from || filters.date_to)

@@ -48,7 +48,8 @@ const STATUS_OPTIONS = [
     { value: 'failed', label: 'Failed' },
 ];
 
-export default function ReceiptsIndex({ receipts, filters, sorting }: Props) {
+export default function ReceiptsIndex({ receipts, filters, sorting: sortingProp }: Props) {
+    const sorting = sortingProp ?? { sort_by: 'purchase_date', sort_dir: 'desc' as const };
     const [search, setSearch] = useState(filters.search || '');
     const [showFilters, setShowFilters] = useState(
         !!(filters.status || filters.date_from || filters.date_to)

@@ -20,7 +20,8 @@ interface Props {
     sorting: { sort_by: string; sort_dir: 'asc' | 'desc' };
 }
 
-export default function TransactionsIndex({ transactions, categories, lhdnCategories, filters, sorting }: Props) {
+export default function TransactionsIndex({ transactions, categories, lhdnCategories, filters, sorting: sortingProp }: Props) {
+    const sorting = sortingProp ?? { sort_by: 'transaction_date', sort_dir: 'desc' as const };
     const handleSort = (column: string) => {
         const newDir = sorting.sort_by === column && sorting.sort_dir === 'asc' ? 'desc' : 'asc';
         router.get('/transactions', { ...filters, sort_by: column, sort_dir: newDir }, { preserveState: true, preserveScroll: true });

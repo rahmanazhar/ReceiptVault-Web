@@ -60,7 +60,8 @@ function formatMcPeriod(startDate: string | null, endDate: string | null, days: 
     return parts.join(' ');
 }
 
-export default function MedicalCertificatesIndex({ medicalCertificates, filters, sorting }: Props) {
+export default function MedicalCertificatesIndex({ medicalCertificates, filters, sorting: sortingProp }: Props) {
+    const sorting = sortingProp ?? { sort_by: 'created_at', sort_dir: 'desc' as const };
     const [search, setSearch] = useState(filters.search || '');
     const [showFilters, setShowFilters] = useState(
         !!(filters.status || filters.date_from || filters.date_to)
