@@ -42,11 +42,21 @@ class ReceiptWebController extends Controller
             $query->whereDate('purchase_date', '<=', $dateTo);
         }
 
-        $receipts = $query->latest('purchase_date')->latest('created_at')->paginate(20)->withQueryString();
+        // Sorting
+        $sortable = ['merchant_name', 'purchase_date', 'total_amount', 'status', 'ai_confidence_score', 'created_at'];
+        $sortBy = in_array($request->input('sort_by'), $sortable) ? $request->input('sort_by') : 'purchase_date';
+        $sortDir = $request->input('sort_dir') === 'asc' ? 'asc' : 'desc';
+        $query->orderBy($sortBy, $sortDir);
+        if ($sortBy !== 'created_at') {
+            $query->orderBy('created_at', 'desc');
+        }
+
+        $receipts = $query->paginate(20)->withQueryString();
 
         return Inertia::render('Receipts/Index', [
             'receipts' => $receipts,
             'filters' => $request->only(['search', 'status', 'date_from', 'date_to']),
+            'sorting' => ['sort_by' => $sortBy, 'sort_dir' => $sortDir],
         ]);
     }
 

@@ -36,7 +36,16 @@ class TransactionWebController extends Controller
             }
         }
 
-        $transactions = $query->latest('transaction_date')->paginate(30);
+        // Sorting
+        $sortable = ['description', 'transaction_date', 'amount', 'is_tax_deductible', 'created_at'];
+        $sortBy = in_array($request->input('sort_by'), $sortable) ? $request->input('sort_by') : 'transaction_date';
+        $sortDir = $request->input('sort_dir') === 'asc' ? 'asc' : 'desc';
+        $query->orderBy($sortBy, $sortDir);
+        if ($sortBy !== 'created_at') {
+            $query->orderBy('created_at', 'desc');
+        }
+
+        $transactions = $query->paginate(30)->withQueryString();
 
         $categories = Category::where(function ($q) use ($request) {
             $q->where('user_id', $request->user()->id)
@@ -53,6 +62,7 @@ class TransactionWebController extends Controller
             'categories' => $categories,
             'lhdnCategories' => $lhdnCategories,
             'filters' => $request->only(['category_id', 'date_from', 'date_to', 'tax_deductible']),
+            'sorting' => ['sort_by' => $sortBy, 'sort_dir' => $sortDir],
         ]);
     }
 }

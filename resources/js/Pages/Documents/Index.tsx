@@ -7,6 +7,7 @@ import Badge from '@/Components/ui/Badge';
 import EmptyState from '@/Components/ui/EmptyState';
 import Tooltip from '@/Components/ui/Tooltip';
 import { formatDate } from '@/lib/utils';
+import SortHeader from '@/Components/ui/SortHeader';
 import {
     FolderOpenIcon,
     ChevronLeftIcon,
@@ -34,6 +35,7 @@ interface Props {
         date_from?: string;
         date_to?: string;
     };
+    sorting: { sort_by: string; sort_dir: 'asc' | 'desc' };
 }
 
 const STATUS_OPTIONS = [
@@ -61,11 +63,16 @@ const TYPE_VARIANT: Record<string, 'default' | 'info' | 'warning' | 'success' | 
     other: 'default',
 };
 
-export default function DocumentsIndex({ documents, filters }: Props) {
+export default function DocumentsIndex({ documents, filters, sorting }: Props) {
     const [search, setSearch] = useState(filters.search || '');
     const [showFilters, setShowFilters] = useState(
         !!(filters.status || filters.document_type || filters.date_from || filters.date_to)
     );
+
+    const handleSort = (column: string) => {
+        const newDir = sorting.sort_by === column && sorting.sort_dir === 'asc' ? 'desc' : 'asc';
+        router.get('/documents', { ...filters, sort_by: column, sort_dir: newDir }, { preserveState: true, preserveScroll: true });
+    };
 
     const statusVariant = (status: string) => {
         switch (status) {
@@ -110,6 +117,8 @@ export default function DocumentsIndex({ documents, filters }: Props) {
         if (filters.document_type) params.set('document_type', filters.document_type);
         if (filters.date_from) params.set('date_from', filters.date_from);
         if (filters.date_to) params.set('date_to', filters.date_to);
+        if (sorting.sort_by) params.set('sort_by', sorting.sort_by);
+        if (sorting.sort_dir) params.set('sort_dir', sorting.sort_dir);
         params.set('page', String(page));
         return `/documents?${params.toString()}`;
     };
@@ -265,12 +274,12 @@ export default function DocumentsIndex({ documents, filters }: Props) {
                                     <thead>
                                         <tr className="border-b border-[var(--color-border)]">
                                             <th className="text-left text-xs font-medium text-[var(--color-text-muted)] uppercase px-4 py-3 w-16"></th>
-                                            <th className="text-left text-xs font-medium text-[var(--color-text-muted)] uppercase px-4 py-3">Title</th>
-                                            <th className="text-left text-xs font-medium text-[var(--color-text-muted)] uppercase px-4 py-3">Type</th>
-                                            <th className="text-left text-xs font-medium text-[var(--color-text-muted)] uppercase px-4 py-3">Sender</th>
-                                            <th className="text-left text-xs font-medium text-[var(--color-text-muted)] uppercase px-4 py-3">Issue Date</th>
-                                            <th className="text-center text-xs font-medium text-[var(--color-text-muted)] uppercase px-4 py-3">Status</th>
-                                            <th className="text-right text-xs font-medium text-[var(--color-text-muted)] uppercase px-4 py-3">AI</th>
+                                            <SortHeader column="title" label="Title" sorting={sorting} onSort={handleSort} />
+                                            <SortHeader column="document_type" label="Type" sorting={sorting} onSort={handleSort} />
+                                            <SortHeader column="sender" label="Sender" sorting={sorting} onSort={handleSort} />
+                                            <SortHeader column="issue_date" label="Issue Date" sorting={sorting} onSort={handleSort} />
+                                            <SortHeader column="status" label="Status" sorting={sorting} onSort={handleSort} align="center" />
+                                            <SortHeader column="ai_confidence_score" label="AI" sorting={sorting} onSort={handleSort} align="right" />
                                             <th className="text-right text-xs font-medium text-[var(--color-text-muted)] uppercase px-4 py-3 w-16">Actions</th>
                                         </tr>
                                     </thead>

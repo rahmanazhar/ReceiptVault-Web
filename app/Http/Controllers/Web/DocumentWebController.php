@@ -45,11 +45,21 @@ class DocumentWebController extends Controller
             $query->whereDate('issue_date', '<=', $dateTo);
         }
 
-        $documents = $query->latest()->paginate(20)->withQueryString();
+        // Sorting
+        $sortable = ['title', 'document_type', 'sender', 'issue_date', 'status', 'ai_confidence_score', 'created_at'];
+        $sortBy = in_array($request->input('sort_by'), $sortable) ? $request->input('sort_by') : 'created_at';
+        $sortDir = $request->input('sort_dir') === 'asc' ? 'asc' : 'desc';
+        $query->orderBy($sortBy, $sortDir);
+        if ($sortBy !== 'created_at') {
+            $query->orderBy('created_at', 'desc');
+        }
+
+        $documents = $query->paginate(20)->withQueryString();
 
         return Inertia::render('Documents/Index', [
             'documents' => $documents,
             'filters' => $request->only(['search', 'status', 'document_type', 'date_from', 'date_to']),
+            'sorting' => ['sort_by' => $sortBy, 'sort_dir' => $sortDir],
         ]);
     }
 

@@ -41,11 +41,21 @@ class MedicalCertificateWebController extends Controller
             $query->whereDate('mc_start_date', '<=', $dateTo);
         }
 
-        $medicalCertificates = $query->latest()->paginate(20)->withQueryString();
+        // Sorting
+        $sortable = ['patient_name', 'clinic_name', 'mc_start_date', 'mc_days', 'status', 'ai_confidence_score', 'created_at'];
+        $sortBy = in_array($request->input('sort_by'), $sortable) ? $request->input('sort_by') : 'created_at';
+        $sortDir = $request->input('sort_dir') === 'asc' ? 'asc' : 'desc';
+        $query->orderBy($sortBy, $sortDir);
+        if ($sortBy !== 'created_at') {
+            $query->orderBy('created_at', 'desc');
+        }
+
+        $medicalCertificates = $query->paginate(20)->withQueryString();
 
         return Inertia::render('MedicalCertificates/Index', [
             'medicalCertificates' => $medicalCertificates,
             'filters' => $request->only(['search', 'status', 'date_from', 'date_to']),
+            'sorting' => ['sort_by' => $sortBy, 'sort_dir' => $sortDir],
         ]);
     }
 

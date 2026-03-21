@@ -7,6 +7,7 @@ import Badge from '@/Components/ui/Badge';
 import EmptyState from '@/Components/ui/EmptyState';
 import Tooltip from '@/Components/ui/Tooltip';
 import { formatCurrency, formatDate } from '@/lib/utils';
+import SortHeader from '@/Components/ui/SortHeader';
 import {
     DocumentTextIcon,
     ChevronLeftIcon,
@@ -32,6 +33,10 @@ interface Props {
         date_from?: string;
         date_to?: string;
     };
+    sorting: {
+        sort_by: string;
+        sort_dir: 'asc' | 'desc';
+    };
 }
 
 const STATUS_OPTIONS = [
@@ -43,11 +48,16 @@ const STATUS_OPTIONS = [
     { value: 'failed', label: 'Failed' },
 ];
 
-export default function ReceiptsIndex({ receipts, filters }: Props) {
+export default function ReceiptsIndex({ receipts, filters, sorting }: Props) {
     const [search, setSearch] = useState(filters.search || '');
     const [showFilters, setShowFilters] = useState(
         !!(filters.status || filters.date_from || filters.date_to)
     );
+
+    const handleSort = (column: string) => {
+        const newDir = sorting.sort_by === column && sorting.sort_dir === 'asc' ? 'desc' : 'asc';
+        router.get('/receipts', { ...filters, sort_by: column, sort_dir: newDir }, { preserveState: true, preserveScroll: true });
+    };
 
     const statusVariant = (status: string) => {
         switch (status) {
@@ -86,13 +96,15 @@ export default function ReceiptsIndex({ receipts, filters }: Props) {
 
     const hasActiveFilters = !!(filters.search || filters.status || filters.date_from || filters.date_to);
 
-    // Build pagination URL preserving filters
+    // Build pagination URL preserving filters and sorting
     const pageUrl = (page: number) => {
         const params = new URLSearchParams();
         if (filters.search) params.set('search', filters.search);
         if (filters.status) params.set('status', filters.status);
         if (filters.date_from) params.set('date_from', filters.date_from);
         if (filters.date_to) params.set('date_to', filters.date_to);
+        if (sorting.sort_by) params.set('sort_by', sorting.sort_by);
+        if (sorting.sort_dir) params.set('sort_dir', sorting.sort_dir);
         params.set('page', String(page));
         return `/receipts?${params.toString()}`;
     };
@@ -236,12 +248,12 @@ export default function ReceiptsIndex({ receipts, filters }: Props) {
                                     <thead>
                                         <tr className="border-b border-[var(--color-border)]">
                                             <th className="text-left text-xs font-medium text-[var(--color-text-muted)] uppercase px-4 py-3 w-16"></th>
-                                            <th className="text-left text-xs font-medium text-[var(--color-text-muted)] uppercase px-4 py-3">Merchant</th>
-                                            <th className="text-left text-xs font-medium text-[var(--color-text-muted)] uppercase px-4 py-3">Date</th>
-                                            <th className="text-right text-xs font-medium text-[var(--color-text-muted)] uppercase px-4 py-3">Amount</th>
+                                            <SortHeader column="merchant_name" label="Merchant" sorting={sorting} onSort={handleSort} />
+                                            <SortHeader column="purchase_date" label="Date" sorting={sorting} onSort={handleSort} />
+                                            <SortHeader column="total_amount" label="Amount" sorting={sorting} onSort={handleSort} align="right" />
                                             <th className="text-left text-xs font-medium text-[var(--color-text-muted)] uppercase px-4 py-3">Payment</th>
-                                            <th className="text-center text-xs font-medium text-[var(--color-text-muted)] uppercase px-4 py-3">Status</th>
-                                            <th className="text-right text-xs font-medium text-[var(--color-text-muted)] uppercase px-4 py-3">AI</th>
+                                            <SortHeader column="status" label="Status" sorting={sorting} onSort={handleSort} align="center" />
+                                            <SortHeader column="ai_confidence_score" label="AI" sorting={sorting} onSort={handleSort} align="right" />
                                             <th className="text-right text-xs font-medium text-[var(--color-text-muted)] uppercase px-4 py-3 w-16">Actions</th>
                                         </tr>
                                     </thead>

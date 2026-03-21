@@ -7,6 +7,7 @@ import Select from '@/Components/ui/Select';
 import EmptyState from '@/Components/ui/EmptyState';
 import Tooltip from '@/Components/ui/Tooltip';
 import HelpTooltip from '@/Components/ui/HelpTooltip';
+import SortHeader from '@/Components/ui/SortHeader';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { BanknotesIcon, CalendarIcon } from '@heroicons/react/24/outline';
 import type { Transaction, Category, PaginatedResponse } from '@/types/models';
@@ -16,9 +17,14 @@ interface Props {
     categories: Category[];
     lhdnCategories: Record<string, string>;
     filters: Record<string, string>;
+    sorting: { sort_by: string; sort_dir: 'asc' | 'desc' };
 }
 
-export default function TransactionsIndex({ transactions, categories, lhdnCategories, filters }: Props) {
+export default function TransactionsIndex({ transactions, categories, lhdnCategories, filters, sorting }: Props) {
+    const handleSort = (column: string) => {
+        const newDir = sorting.sort_by === column && sorting.sort_dir === 'asc' ? 'desc' : 'asc';
+        router.get('/transactions', { ...filters, sort_by: column, sort_dir: newDir }, { preserveState: true, preserveScroll: true });
+    };
     return (
         <>
             <Head title="Transactions" />
@@ -90,16 +96,11 @@ export default function TransactionsIndex({ transactions, categories, lhdnCatego
                                 <table className="w-full">
                                     <thead>
                                         <tr className="border-b border-[var(--color-border)]">
-                                            <th className="text-left text-xs font-medium text-[var(--color-text-muted)] uppercase px-4 py-3">Description</th>
+                                            <SortHeader column="description" label="Description" sorting={sorting} onSort={handleSort} />
                                             <th className="text-left text-xs font-medium text-[var(--color-text-muted)] uppercase px-4 py-3">Category</th>
-                                            <th className="text-left text-xs font-medium text-[var(--color-text-muted)] uppercase px-4 py-3">Date</th>
-                                            <th className="text-right text-xs font-medium text-[var(--color-text-muted)] uppercase px-4 py-3">Amount</th>
-                                            <th className="text-center text-xs font-medium text-[var(--color-text-muted)] uppercase px-4 py-3">
-                                                <div className="flex items-center justify-center gap-1">
-                                                    Tax
-                                                    <HelpTooltip text="Whether this transaction qualifies for LHDN tax relief" />
-                                                </div>
-                                            </th>
+                                            <SortHeader column="transaction_date" label="Date" sorting={sorting} onSort={handleSort} />
+                                            <SortHeader column="amount" label="Amount" sorting={sorting} onSort={handleSort} align="right" />
+                                            <SortHeader column="is_tax_deductible" label="Tax" sorting={sorting} onSort={handleSort} align="center" />
                                         </tr>
                                     </thead>
                                     <tbody>
